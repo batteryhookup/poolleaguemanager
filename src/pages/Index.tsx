@@ -9,9 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 
+interface User {
+  username: string;
+  password: string;
+  phoneNumber: string;
+  zipCode: string;
+}
+
 const Index = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [zipCode, setZipCode] = useState("");
   const [isLogin, setIsLogin] = useState(true);
   const { toast } = useToast();
 
@@ -20,7 +29,7 @@ const Index = () => {
     const users = JSON.parse(localStorage.getItem("users") || "[]");
 
     if (isLogin) {
-      const user = users.find((u: { username: string; password: string }) => 
+      const user = users.find((u: User) => 
         u.username === username && u.password === password
       );
       
@@ -38,7 +47,7 @@ const Index = () => {
         });
       }
     } else {
-      const userExists = users.some((u: { username: string }) => u.username === username);
+      const userExists = users.some((u: User) => u.username === username);
       
       if (userExists) {
         toast({
@@ -49,7 +58,7 @@ const Index = () => {
         return;
       }
 
-      const newUser = { username, password };
+      const newUser = { username, password, phoneNumber, zipCode };
       users.push(newUser);
       localStorage.setItem("users", JSON.stringify(users));
       localStorage.setItem("currentUser", JSON.stringify(newUser));
@@ -106,6 +115,33 @@ const Index = () => {
                       required
                     />
                   </div>
+                  {!isLogin && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneNumber">Phone Number</Label>
+                        <Input
+                          id="phoneNumber"
+                          type="tel"
+                          value={phoneNumber}
+                          onChange={(e) => setPhoneNumber(e.target.value)}
+                          pattern="[0-9]{10}"
+                          placeholder="1234567890"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="zipCode">Zip Code</Label>
+                        <Input
+                          id="zipCode"
+                          value={zipCode}
+                          onChange={(e) => setZipCode(e.target.value)}
+                          pattern="[0-9]{5}"
+                          placeholder="12345"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
                   <Button type="submit" className="w-full">
                     {isLogin ? "Login" : "Create Account"}
                   </Button>
@@ -113,7 +149,13 @@ const Index = () => {
                 <Button
                   variant="link"
                   className="w-full mt-2"
-                  onClick={() => setIsLogin(!isLogin)}
+                  onClick={() => {
+                    setIsLogin(!isLogin);
+                    if (!isLogin) {
+                      setPhoneNumber("");
+                      setZipCode("");
+                    }
+                  }}
                 >
                   {isLogin ? "Need an account? Sign up" : "Already have an account? Login"}
                 </Button>
