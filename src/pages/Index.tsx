@@ -66,12 +66,12 @@ const Index = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-4">
           <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-black to-gray-500">
             Pool League Manager
           </h1>
           <p className="mx-auto max-w-[600px] text-gray-500 md:text-xl dark:text-gray-400">
-            Create leagues, manage teams, and track tournaments with ease.
+            Create leagues, manage teams, and run tournaments with ease.
           </p>
         </div>
 
