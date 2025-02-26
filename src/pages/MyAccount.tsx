@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface League {
   id: number;
@@ -29,6 +30,9 @@ const MyAccount = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [password, setPassword] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [leagueName, setLeagueName] = useState("");
+  const [leagueLocation, setLeagueLocation] = useState("");
+  const [leaguePassword, setLeaguePassword] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -45,6 +49,50 @@ const MyAccount = () => {
     );
     setLeagues(userLeagues);
   }, [navigate]);
+
+  const handleCreateLeague = (e: React.FormEvent) => {
+    e.preventDefault();
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+    
+    const isDuplicate = existingLeagues.some(
+      (league: League) => league.name.toLowerCase() === leagueName.toLowerCase()
+    );
+
+    if (isDuplicate) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "A league with this name already exists.",
+      });
+      return;
+    }
+
+    const newLeague = {
+      id: Date.now(),
+      name: leagueName,
+      location: leagueLocation,
+      password: leaguePassword,
+      createdAt: new Date().toISOString(),
+      createdBy: currentUser.username,
+    };
+
+    const updatedLeagues = [...existingLeagues, newLeague];
+    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+
+    // Update the local state with the new league
+    setLeagues(prev => [...prev, newLeague]);
+
+    // Reset form
+    setLeagueName("");
+    setLeagueLocation("");
+    setLeaguePassword("");
+
+    toast({
+      title: "Success",
+      description: "League created successfully!",
+    });
+  };
 
   const handleDeleteAccount = () => {
     const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
@@ -102,20 +150,69 @@ const MyAccount = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                {leagues.length === 0 ? (
-                  <p className="text-muted-foreground">You haven't created any leagues yet.</p>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {leagues.map((league) => (
-                      <Card key={league.id}>
-                        <CardHeader>
-                          <CardTitle className="text-lg">{league.name}</CardTitle>
-                          <p className="text-sm text-muted-foreground">{league.location}</p>
-                        </CardHeader>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                <Tabs defaultValue="my-leagues" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="my-leagues">My Leagues</TabsTrigger>
+                    <TabsTrigger value="create">Create League</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="my-leagues">
+                    {leagues.length === 0 ? (
+                      <p className="text-muted-foreground">You haven't created any leagues yet.</p>
+                    ) : (
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {leagues.map((league) => (
+                          <Card key={league.id}>
+                            <CardHeader>
+                              <CardTitle className="text-lg">{league.name}</CardTitle>
+                              <p className="text-sm text-muted-foreground">{league.location}</p>
+                            </CardHeader>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="create">
+                    <form onSubmit={handleCreateLeague} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="leagueName">League Name</Label>
+                        <Input
+                          id="leagueName"
+                          placeholder="Enter league name"
+                          value={leagueName}
+                          onChange={(e) => setLeagueName(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="location">Location</Label>
+                        <Input
+                          id="location"
+                          placeholder="Enter league location"
+                          value={leagueLocation}
+                          onChange={(e) => setLeagueLocation(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="password">League Password</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          placeholder="Create a password"
+                          value={leaguePassword}
+                          onChange={(e) => setLeaguePassword(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <Button type="submit" className="w-full">
+                        Create League
+                      </Button>
+                    </form>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </section>
