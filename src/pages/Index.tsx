@@ -68,7 +68,7 @@ const Index = () => {
       <div className="space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-black to-gray-500">
-            Sports League Manager
+            Pool League Manager
           </h1>
           <p className="mx-auto max-w-[600px] text-gray-500 md:text-xl dark:text-gray-400">
             Create leagues, manage teams, and track tournaments with ease.
@@ -124,7 +124,7 @@ const Index = () => {
               <CardHeader>
                 <Trophy className="w-8 h-8 text-emerald-600" />
                 <CardTitle>Create League</CardTitle>
-                <CardDescription>Start a new sports league</CardDescription>
+                <CardDescription>Start a new pool league</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Link to="/leagues/new">
