@@ -1,7 +1,6 @@
 
 import { MainNav } from "./MainNav";
 import { Button } from "./ui/button";
-import { UserCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 
@@ -32,9 +31,8 @@ export function Layout({ children }: LayoutProps) {
         <div className="container flex h-14 items-center justify-between">
           <MainNav />
           <Link to="/account">
-            <Button variant="ghost" size="icon">
-              <UserCircle2 className="h-5 w-5" />
-              <span className="sr-only">My Account</span>
+            <Button variant="ghost" className="font-medium">
+              My Account
             </Button>
           </Link>
         </div>
