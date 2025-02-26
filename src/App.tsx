@@ -8,6 +8,9 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import CreateLeague from "./pages/CreateLeague";
 import LeagueFinder from "./pages/LeagueFinder";
+import MyLeagues from "./pages/MyLeagues";
+import MyTeams from "./pages/MyTeams";
+import MyStats from "./pages/MyStats";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +24,9 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/leagues/new" element={<CreateLeague />} />
           <Route path="/leagues/find" element={<LeagueFinder />} />
+          <Route path="/account/leagues" element={<MyLeagues />} />
+          <Route path="/account/teams" element={<MyTeams />} />
+          <Route path="/account/stats" element={<MyStats />} />
           <Route path="/leagues/*" element={<NotFound />} />
           <Route path="/teams/*" element={<NotFound />} />
           <Route path="/schedule/*" element={<NotFound />} />
