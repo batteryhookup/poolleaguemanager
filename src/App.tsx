@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import CreateLeague from "./pages/CreateLeague";
+import LeagueFinder from "./pages/LeagueFinder";
 
 const queryClient = new QueryClient();
 
@@ -17,6 +19,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/leagues/new" element={<CreateLeague />} />
+          <Route path="/leagues/find" element={<LeagueFinder />} />
           <Route path="/leagues/*" element={<NotFound />} />
           <Route path="/teams/*" element={<NotFound />} />
           <Route path="/schedule/*" element={<NotFound />} />
