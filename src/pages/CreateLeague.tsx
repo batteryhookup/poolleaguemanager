@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const CreateLeague = () => {
@@ -15,12 +15,24 @@ const CreateLeague = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const currentUser = localStorage.getItem("currentUser");
+    if (!currentUser) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please login first to create a league.",
+      });
+      navigate("/");
+    }
+  }, [navigate, toast]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Simulate checking for duplicate league names
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
       const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
       const isDuplicate = existingLeagues.some(
         (league: { name: string }) =>
@@ -36,13 +48,13 @@ const CreateLeague = () => {
         return;
       }
 
-      // Save the new league
       const newLeague = {
         id: Date.now(),
         name: leagueName,
         location,
         password,
         createdAt: new Date().toISOString(),
+        createdBy: currentUser.username,
       };
 
       existingLeagues.push(newLeague);
