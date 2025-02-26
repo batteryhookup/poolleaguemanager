@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface League {
@@ -24,6 +24,7 @@ interface League {
   location: string;
   createdAt: string;
   createdBy: string;
+  password: string;
 }
 
 const MyAccount = () => {
@@ -33,6 +34,10 @@ const MyAccount = () => {
   const [leagueName, setLeagueName] = useState("");
   const [leagueLocation, setLeagueLocation] = useState("");
   const [leaguePassword, setLeaguePassword] = useState("");
+  const [activeTab, setActiveTab] = useState("my-leagues");
+  const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
+  const [deleteLeaguePassword, setDeleteLeaguePassword] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -83,14 +88,47 @@ const MyAccount = () => {
     // Update the local state with the new league
     setLeagues(prev => [...prev, newLeague]);
 
-    // Reset form
+    // Reset form and switch to My Leagues tab
     setLeagueName("");
     setLeagueLocation("");
     setLeaguePassword("");
+    setActiveTab("my-leagues");
 
     toast({
       title: "Success",
       description: "League created successfully!",
+    });
+  };
+
+  const handleDeleteLeague = () => {
+    if (!selectedLeague) return;
+
+    if (deleteLeaguePassword !== selectedLeague.password) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Incorrect league password.",
+      });
+      return;
+    }
+
+    const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+    const updatedLeagues = allLeagues.filter(
+      (league: League) => league.id !== selectedLeague.id
+    );
+    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+
+    // Update local state
+    setLeagues(leagues.filter(league => league.id !== selectedLeague.id));
+
+    // Reset state and close dialog
+    setDeleteLeaguePassword("");
+    setSelectedLeague(null);
+    setIsDeleteDialogOpen(false);
+
+    toast({
+      title: "Success",
+      description: "League deleted successfully!",
     });
   };
 
@@ -150,7 +188,7 @@ const MyAccount = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="my-leagues" className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="my-leagues">My Leagues</TabsTrigger>
                     <TabsTrigger value="create">Create League</TabsTrigger>
@@ -162,9 +200,21 @@ const MyAccount = () => {
                       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {leagues.map((league) => (
                           <Card key={league.id}>
-                            <CardHeader>
-                              <CardTitle className="text-lg">{league.name}</CardTitle>
-                              <p className="text-sm text-muted-foreground">{league.location}</p>
+                            <CardHeader className="flex flex-row items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg">{league.name}</CardTitle>
+                                <p className="text-sm text-muted-foreground">{league.location}</p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setSelectedLeague(league);
+                                  setIsDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
                             </CardHeader>
                           </Card>
                         ))}
@@ -294,6 +344,36 @@ const MyAccount = () => {
           </section>
         </div>
       </div>
+
+      {/* Delete League Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete League</DialogTitle>
+            <DialogDescription>
+              To delete "{selectedLeague?.name}", please enter the league password.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="deleteLeaguePassword">League Password</Label>
+              <Input
+                id="deleteLeaguePassword"
+                type="password"
+                value={deleteLeaguePassword}
+                onChange={(e) => setDeleteLeaguePassword(e.target.value)}
+              />
+            </div>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteLeague}
+              className="w-full"
+            >
+              Delete League
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
