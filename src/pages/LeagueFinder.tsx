@@ -11,7 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
+import { clearAllData } from "@/utils/clearData";
+import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface League {
   id: number;
@@ -23,6 +26,8 @@ interface League {
 const LeagueFinder = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const storedLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
@@ -39,14 +44,34 @@ const LeagueFinder = () => {
     a.name.localeCompare(b.name)
   );
 
+  const handleClearData = () => {
+    clearAllData();
+    setLeagues([]);
+    toast({
+      title: "Success",
+      description: "All data has been cleared. You can start fresh now!",
+    });
+    navigate('/');
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold">League Finder</h1>
-          <p className="text-gray-500">
-            Find leagues by name or location
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold">League Finder</h1>
+            <p className="text-gray-500">
+              Find leagues by name or location
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            onClick={handleClearData}
+            className="flex items-center gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Clear All Data
+          </Button>
         </div>
 
         <div className="flex items-center space-x-2">
