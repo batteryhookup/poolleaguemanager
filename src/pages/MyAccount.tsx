@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
@@ -85,10 +84,8 @@ const MyAccount = () => {
     const updatedLeagues = [...existingLeagues, newLeague];
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
 
-    // Update the local state with the new league
     setLeagues(prev => [...prev, newLeague]);
 
-    // Reset form and switch to My Leagues tab
     setLeagueName("");
     setLeagueLocation("");
     setLeaguePassword("");
@@ -118,10 +115,8 @@ const MyAccount = () => {
     );
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
 
-    // Update local state
     setLeagues(leagues.filter(league => league.id !== selectedLeague.id));
 
-    // Reset state and close dialog
     setDeleteLeaguePassword("");
     setSelectedLeague(null);
     setIsDeleteDialogOpen(false);
@@ -148,20 +143,17 @@ const MyAccount = () => {
       return;
     }
 
-    // Remove user from users array
     const updatedUsers = users.filter((u: { username: string }) => 
       u.username !== currentUser.username
     );
     localStorage.setItem("users", JSON.stringify(updatedUsers));
 
-    // Remove user's leagues
     const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     const updatedLeagues = allLeagues.filter(
       (league: League) => league.createdBy !== currentUser.username
     );
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
 
-    // Remove current user from localStorage
     localStorage.removeItem("currentUser");
 
     toast({
@@ -172,13 +164,21 @@ const MyAccount = () => {
     navigate("/");
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("currentUser");
+    navigate("/");
+    toast({
+      title: "Success",
+      description: "Logged out successfully!",
+    });
+  };
+
   return (
     <Layout>
       <div className="space-y-8">
         <h1 className="text-3xl font-bold">My Account</h1>
         
         <div className="grid gap-8">
-          {/* Leagues Section */}
           <section>
             <Card>
               <CardHeader className="flex flex-row items-center gap-4">
@@ -267,7 +267,6 @@ const MyAccount = () => {
             </Card>
           </section>
 
-          {/* Teams Section */}
           <section>
             <Card>
               <CardHeader className="flex flex-row items-center gap-4">
@@ -282,7 +281,6 @@ const MyAccount = () => {
             </Card>
           </section>
 
-          {/* Stats Section */}
           <section>
             <Card>
               <CardHeader className="flex flex-row items-center gap-4">
@@ -297,7 +295,26 @@ const MyAccount = () => {
             </Card>
           </section>
 
-          {/* Delete Account Section */}
+          <section>
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-4">
+                <Users2 className="w-8 h-8 text-emerald-600" />
+                <div>
+                  <CardTitle>Log Out</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="secondary"
+                  onClick={handleLogout}
+                  className="w-full"
+                >
+                  Log Out
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+
           <section>
             <Card>
               <CardHeader className="flex flex-row items-center gap-4">
@@ -345,7 +362,6 @@ const MyAccount = () => {
         </div>
       </div>
 
-      {/* Delete League Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
