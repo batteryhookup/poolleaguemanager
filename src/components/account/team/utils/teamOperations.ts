@@ -21,7 +21,7 @@ export const handlePlayerRemoval = (
     toast({
       variant: "destructive",
       title: "Error",
-      description: "Incorrect team password.",
+      children: "Incorrect team password."
     });
     return false;
   }
