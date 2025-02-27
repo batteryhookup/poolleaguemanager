@@ -2,19 +2,12 @@
 import { useState } from "react";
 import { Team } from "../types/team";
 import { EditTeamDialog } from "./EditTeamDialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { TeamCard } from "./components/TeamCard";
 import { handlePlayerRemoval, handleCaptainTransfer, updateTeamInStorage } from "./utils/teamOperations";
+import { RemovePlayerDialog } from "./dialogs/RemovePlayerDialog";
+import { LeaveTeamDialog } from "./dialogs/LeaveTeamDialog";
+import { AcceptCaptainDialog } from "./dialogs/AcceptCaptainDialog";
 
 interface TeamListProps {
   teams: Team[];
@@ -228,157 +221,49 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
         onTransferCaptain={onTransferCaptain}
       />
 
-      <Dialog 
-        open={isRemovePlayerDialogOpen} 
-        onOpenChange={(open) => {
-          setIsRemovePlayerDialogOpen(open);
-          if (!open) {
-            setRemovePassword("");
-            setSelectedPlayer(null);
-            setSelectedTeam(null);
-          }
+      <RemovePlayerDialog
+        isOpen={isRemovePlayerDialogOpen}
+        onClose={() => {
+          setIsRemovePlayerDialogOpen(false);
+          setRemovePassword("");
+          setSelectedPlayer(null);
+          setSelectedTeam(null);
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remove Player</DialogTitle>
-            <DialogDescription>
-              Please enter the team password to confirm removing {selectedPlayer} from {selectedTeam?.name}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="removePassword">Team Password</Label>
-              <Input
-                id="removePassword"
-                type="password"
-                value={removePassword}
-                onChange={(e) => setRemovePassword(e.target.value)}
-                placeholder="Enter team password"
-              />
-            </div>
-            <div className="flex justify-end space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsRemovePlayerDialogOpen(false);
-                  setRemovePassword("");
-                  setSelectedPlayer(null);
-                  setSelectedTeam(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button 
-                variant="destructive" 
-                onClick={handleRemovePlayer}
-                disabled={!removePassword}
-              >
-                Remove Player
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+        selectedTeam={selectedTeam}
+        selectedPlayer={selectedPlayer}
+        removePassword={removePassword}
+        setRemovePassword={setRemovePassword}
+        onConfirmRemove={handleRemovePlayer}
+      />
 
-      <Dialog 
-        open={isLeaveTeamDialogOpen} 
-        onOpenChange={(open) => {
-          setIsLeaveTeamDialogOpen(open);
-          if (!open) {
-            setLeaveTeamPassword("");
-            setSelectedTeam(null);
-          }
+      <LeaveTeamDialog
+        isOpen={isLeaveTeamDialogOpen}
+        onClose={() => {
+          setIsLeaveTeamDialogOpen(false);
+          setLeaveTeamPassword("");
+          setSelectedTeam(null);
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Leave Team</DialogTitle>
-            <DialogDescription>
-              Please enter your account password to confirm leaving {selectedTeam?.name}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="leaveTeamPassword">Your Password</Label>
-              <Input
-                id="leaveTeamPassword"
-                type="password"
-                value={leaveTeamPassword}
-                onChange={(e) => setLeaveTeamPassword(e.target.value)}
-                placeholder="Enter your account password"
-              />
-            </div>
-            <div className="flex justify-end space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsLeaveTeamDialogOpen(false);
-                  setLeaveTeamPassword("");
-                  setSelectedTeam(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleLeaveTeam}
-                disabled={!leaveTeamPassword}
-              >
-                Leave Team
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+        selectedTeam={selectedTeam}
+        leaveTeamPassword={leaveTeamPassword}
+        setLeaveTeamPassword={setLeaveTeamPassword}
+        onConfirmLeave={handleLeaveTeam}
+      />
 
-      <Dialog open={isAcceptCaptainOpen} onOpenChange={setIsAcceptCaptainOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Accept Team Captain Role</DialogTitle>
-            <DialogDescription>
-              Please set a new team password to accept the captain role.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">New Team Password</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new team password"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new team password"
-              />
-            </div>
-            <div className="flex justify-end space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsAcceptCaptainOpen(false);
-                  setNewPassword("");
-                  setConfirmPassword("");
-                }}
-              >
-                Cancel
-              </Button>
-              <Button onClick={submitAcceptCaptain} disabled={!newPassword || !confirmPassword}>
-                Accept & Set Password
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AcceptCaptainDialog
+        isOpen={isAcceptCaptainOpen}
+        onClose={() => {
+          setIsAcceptCaptainOpen(false);
+          setNewPassword("");
+          setConfirmPassword("");
+          setSelectedTeam(null);
+        }}
+        selectedTeam={selectedTeam}
+        newPassword={newPassword}
+        setNewPassword={setNewPassword}
+        confirmPassword={confirmPassword}
+        setConfirmPassword={setConfirmPassword}
+        onConfirmAccept={submitAcceptCaptain}
+      />
     </>
   );
 }
-
