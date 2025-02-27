@@ -25,6 +25,11 @@ export const AuthForm = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Clear all localStorage data when component mounts
+  useState(() => {
+    localStorage.clear();
+  });
+
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
 
