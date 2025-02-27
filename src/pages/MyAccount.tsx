@@ -12,6 +12,7 @@ import { Team } from "@/components/account/types/team";
 const MyAccount = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [username, setUsername] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,12 +22,13 @@ const MyAccount = () => {
       return;
     }
 
-    const username = JSON.parse(currentUser).username;
+    const userData = JSON.parse(currentUser);
+    setUsername(userData.username);
 
     // Filter leagues
     const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     const userLeagues = allLeagues.filter(
-      (league: League) => league.createdBy === username
+      (league: League) => league.createdBy === userData.username
     ).map((league: League) => ({
       ...league,
       teams: league.teams || [],
@@ -37,7 +39,7 @@ const MyAccount = () => {
     // Filter teams - only show teams where the user is either the creator or a member
     const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
     const userTeams = allTeams.filter((team: Team) => 
-      team.createdBy === username || team.members.includes(username)
+      team.createdBy === userData.username || team.members.includes(userData.username)
     );
     setTeams(userTeams);
   }, [navigate]);
@@ -45,7 +47,7 @@ const MyAccount = () => {
   return (
     <Layout>
       <div className="space-y-8">
-        <h1 className="text-3xl font-bold">My Account</h1>
+        <h1 className="text-3xl font-bold capitalize">{username}</h1>
         
         <div className="grid gap-8">
           <section>
