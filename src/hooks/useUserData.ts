@@ -118,38 +118,52 @@ export const useUserData = () => {
     loadUserData();
     
     const handleLeagueUpdate = (event: Event) => {
-      console.log("League update event received:", event);
-      
       if (event instanceof CustomEvent) {
-        const { league, category, action } = event.detail;
-        console.log(`League update: ${action}, Category: ${category}`, league);
+        const { league } = event.detail;
         
-        if (action === 'create') {
-          // Use the category provided by the event
-          switch (category) {
-            case 'active':
-              setActiveLeagues(prev => [...prev, league]);
-              break;
-            case 'upcoming':
-              setUpcomingLeagues(prev => [...prev, league]);
-              break;
-            case 'archived':
-              setArchivedLeagues(prev => [...prev, league]);
-              break;
-          }
+        // Always recategorize the league when an update occurs
+        const category = categorizeLeague(league, username);
+        console.log(`League update received for ${league.name}, categorized as: ${category}`);
+        
+        // Update the appropriate category state
+        switch (category) {
+          case 'active':
+            setActiveLeagues(prev => {
+              const filtered = prev.filter(l => l.id !== league.id);
+              return [...filtered, league];
+            });
+            // Remove from other categories
+            setUpcomingLeagues(prev => prev.filter(l => l.id !== league.id));
+            setArchivedLeagues(prev => prev.filter(l => l.id !== league.id));
+            break;
+          case 'upcoming':
+            setUpcomingLeagues(prev => {
+              const filtered = prev.filter(l => l.id !== league.id);
+              return [...filtered, league];
+            });
+            // Remove from other categories
+            setActiveLeagues(prev => prev.filter(l => l.id !== league.id));
+            setArchivedLeagues(prev => prev.filter(l => l.id !== league.id));
+            break;
+          case 'archived':
+            setArchivedLeagues(prev => {
+              const filtered = prev.filter(l => l.id !== league.id);
+              return [...filtered, league];
+            });
+            // Remove from other categories
+            setActiveLeagues(prev => prev.filter(l => l.id !== league.id));
+            setUpcomingLeagues(prev => prev.filter(l => l.id !== league.id));
+            break;
         }
       }
-      
-      // Reload all data to ensure consistency with other changes
-      loadUserData();
     };
     
     window.addEventListener('leagueUpdate', handleLeagueUpdate);
-    window.addEventListener('storage', handleLeagueUpdate);
+    window.addEventListener('storage', loadUserData);
     
     return () => {
       window.removeEventListener('leagueUpdate', handleLeagueUpdate);
-      window.removeEventListener('storage', handleLeagueUpdate);
+      window.removeEventListener('storage', loadUserData);
     };
   }, [navigate, username]);
 
