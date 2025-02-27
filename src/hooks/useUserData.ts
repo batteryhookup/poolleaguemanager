@@ -99,20 +99,26 @@ export const useUserData = () => {
   };
 
   useEffect(() => {
-    loadUserData();
-    
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "leagues" || e.key === "lastLeagueUpdate") {
         loadUserData();
       }
     };
+
+    const handleLeagueUpdate = () => {
+      console.log("League update event received");
+      // Force an immediate update
+      setTimeout(loadUserData, 0);
+    };
+
+    loadUserData();
     
     window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('leagueUpdate', loadUserData);
+    window.addEventListener('leagueUpdate', handleLeagueUpdate);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('leagueUpdate', loadUserData);
+      window.removeEventListener('leagueUpdate', handleLeagueUpdate);
     };
   }, [navigate]);
 
