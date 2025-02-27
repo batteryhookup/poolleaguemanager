@@ -94,14 +94,7 @@ const CreateLeague = () => {
 
       existingLeagues.push(newLeague);
       localStorage.setItem("leagues", JSON.stringify(existingLeagues));
-      
-      // First show success message
-      toast({
-        title: "Success",
-        description: "League created successfully!",
-      });
 
-      // Then update the loading state
       setIsLoading(false);
 
       // Force a sync of localStorage across tabs
@@ -110,7 +103,7 @@ const CreateLeague = () => {
         newValue: JSON.stringify(existingLeagues)
       }));
 
-      // Finally, trigger the league update event
+      // Trigger the league update event
       window.dispatchEvent(new Event('leagueUpdate'));
 
       // Show explanation dialog which will handle navigation when closed
@@ -192,13 +185,11 @@ const CreateLeague = () => {
           </Button>
         </form>
 
-        {/* Use controlled Dialog with explicit open state */}
         <Dialog 
           open={showExplanationDialog} 
           onOpenChange={(open) => {
             setShowExplanationDialog(open);
             if (!open) {
-              // Only navigate when dialog is actually closing
               navigate("/account");
             }
           }}
