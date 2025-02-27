@@ -1,16 +1,7 @@
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Crown, Trash2 } from "lucide-react";
 import { Team } from "../types/team";
 import { EditTeamDialog } from "./EditTeamDialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +11,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { TeamCard } from "./components/TeamCard";
+import { handlePlayerRemoval, handleCaptainTransfer, updateTeamInStorage } from "./utils/teamOperations";
 
 interface TeamListProps {
   teams: Team[];
@@ -48,14 +42,7 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
   };
 
   const handleUpdateTeam = (updatedTeam: Team) => {
-    const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
-    const updatedTeams = allTeams.map((t: Team) =>
-      t.id === updatedTeam.id ? updatedTeam : t
-    );
-    localStorage.setItem("teams", JSON.stringify(updatedTeams));
-
-    window.dispatchEvent(new Event("storage"));
-
+    updateTeamInStorage(updatedTeam);
     toast({
       title: "Success",
       description: "Team updated successfully.",
@@ -85,48 +72,23 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
   const handleRemovePlayer = () => {
     if (!selectedTeam || !selectedPlayer) return;
 
-    if (removePassword !== selectedTeam.password) {
+    if (handlePlayerRemoval(selectedTeam, selectedPlayer, removePassword, toast)) {
+      setIsRemovePlayerDialogOpen(false);
+      setSelectedTeam(null);
+      setSelectedPlayer(null);
+      setRemovePassword("");
+
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Incorrect team password.",
+        title: "Success",
+        description: `${selectedPlayer} has been removed from the team.`,
       });
-      return;
     }
-
-    const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
-    const updatedTeams = allTeams.map((t: Team) => {
-      if (t.id === selectedTeam.id) {
-        return {
-          ...t,
-          members: t.members.filter((member) => member !== selectedPlayer),
-        };
-      }
-      return t;
-    });
-    localStorage.setItem("teams", JSON.stringify(updatedTeams));
-
-    window.dispatchEvent(new Event("storage"));
-
-    setIsRemovePlayerDialogOpen(false);
-    setSelectedTeam(null);
-    setSelectedPlayer(null);
-    setRemovePassword("");
-
-    toast({
-      title: "Success",
-      description: `${selectedPlayer} has been removed from the team.`,
-    });
   };
 
   const handleLeaveTeam = () => {
     if (!selectedTeam) return;
 
-    const currentUser = localStorage.getItem("currentUser");
-    if (!currentUser) return;
-
-    const userData = JSON.parse(currentUser);
-    if (leaveTeamPassword !== userData.password) {
+    if (leaveTeamPassword !== currentUser.password) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -144,28 +106,10 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
   const onTransferCaptain = (newCaptain: string) => {
     if (!selectedTeam) return;
 
-    const pendingTransfers = JSON.parse(localStorage.getItem("pendingCaptainTransfers") || "[]");
-    pendingTransfers.push({
-      teamId: selectedTeam.id,
-      newCaptain: newCaptain,
-      timestamp: new Date().toISOString(),
-    });
-    localStorage.setItem("pendingCaptainTransfers", JSON.stringify(pendingTransfers));
-
-    const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
-    notifications.push({
-      id: Date.now(),
-      userId: newCaptain,
-      message: `You have been selected as the new team captain for "${selectedTeam.name}". Please accept the role and set a new team password.`,
-      read: false,
-      timestamp: new Date().toISOString(),
-    });
-    localStorage.setItem("notifications", JSON.stringify(notifications));
+    handleCaptainTransfer(selectedTeam.id, newCaptain, selectedTeam.name);
 
     setIsEditTeamOpen(false);
     setSelectedTeam(null);
-
-    window.dispatchEvent(new Event("storage"));
 
     toast({
       title: "Success",
@@ -243,7 +187,7 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
   const pendingTransfers = JSON.parse(localStorage.getItem("pendingCaptainTransfers") || "[]");
 
   return (
-    <TooltipProvider>
+    <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {teams.map((team) => {
           const pendingInvites = JSON.parse(localStorage.getItem("teamInvites") || "[]")
@@ -256,112 +200,19 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
           );
 
           return (
-            <Card key={team.id}>
-              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                <div className="space-y-1">
-                  <CardTitle className="text-lg">{team.name}</CardTitle>
-                  {isCreator && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditTeam(team)}
-                      className="mt-2"
-                    >
-                      Edit Team
-                    </Button>
-                  )}
-                  <div className="text-sm text-muted-foreground mt-2">
-                    Members ({team.members.length}):
-                    <div className="mt-1">
-                      {team.members.map((member) => (
-                        <div key={member} className="flex items-center justify-between group">
-                          <div className="flex items-center gap-2">
-                            <span>{member}</span>
-                            {team.createdBy === member && (
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <Crown className="h-4 w-4 text-yellow-500" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Team Captain</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            {isPendingNewCaptain && member === currentUser.username && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleAcceptCaptain(team)}
-                                className="h-7 text-xs"
-                              >
-                                Accept Captain Role
-                              </Button>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            {isCreator && member !== currentUser.username && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                                    onClick={() => initiateRemovePlayer(team, member)}
-                                  >
-                                    <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Remove player</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            {member === currentUser.username && !isCreator && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                                    onClick={() => initiateLeaveTeam(team)}
-                                  >
-                                    <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Leave team</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                {isCreator && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onDeleteTeam(team)}
-                  >
-                    <Trash2 className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                )}
-              </CardHeader>
-              {pendingInvites.length > 0 && (
-                <CardContent>
-                  <div className="text-sm text-muted-foreground">
-                    <h4 className="font-medium">Pending Invites:</h4>
-                    <ul className="mt-1 space-y-1">
-                      {pendingInvites.map((invite: any) => (
-                        <li key={invite.id}>{invite.username}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </CardContent>
-              )}
-            </Card>
+            <TeamCard
+              key={team.id}
+              team={team}
+              currentUser={currentUser}
+              isCreator={isCreator}
+              isPendingNewCaptain={isPendingNewCaptain}
+              pendingInvites={pendingInvites}
+              onEditTeam={handleEditTeam}
+              onDeleteTeam={onDeleteTeam}
+              onRemovePlayer={initiateRemovePlayer}
+              onLeaveTeam={initiateLeaveTeam}
+              onAcceptCaptain={handleAcceptCaptain}
+            />
           );
         })}
       </div>
@@ -527,6 +378,7 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
           </div>
         </DialogContent>
       </Dialog>
-    </TooltipProvider>
+    </>
   );
 }
+
