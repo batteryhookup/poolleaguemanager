@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "./use-toast";
 import { League } from "@/components/account/types/league";
 import { Team } from "@/components/account/types/team";
-import { parseISO, isAfter, isBefore } from "date-fns";
+import { isAfter } from "date-fns";
 
 export const categorizeLeague = (league: League, username: string, now: Date = new Date()) => {
   if (!league.schedule || league.schedule.length === 0) {
@@ -117,53 +117,17 @@ export const useUserData = () => {
   useEffect(() => {
     loadUserData();
     
-    const handleLeagueUpdate = (event: Event) => {
-      if (event instanceof CustomEvent) {
-        const { league } = event.detail;
-        
-        // Always recategorize the league when an update occurs
-        const category = categorizeLeague(league, username);
-        console.log(`League update received for ${league.name}, categorized as: ${category}`);
-        
-        // Update the appropriate category state
-        switch (category) {
-          case 'active':
-            setActiveLeagues(prev => {
-              const filtered = prev.filter(l => l.id !== league.id);
-              return [...filtered, league];
-            });
-            // Remove from other categories
-            setUpcomingLeagues(prev => prev.filter(l => l.id !== league.id));
-            setArchivedLeagues(prev => prev.filter(l => l.id !== league.id));
-            break;
-          case 'upcoming':
-            setUpcomingLeagues(prev => {
-              const filtered = prev.filter(l => l.id !== league.id);
-              return [...filtered, league];
-            });
-            // Remove from other categories
-            setActiveLeagues(prev => prev.filter(l => l.id !== league.id));
-            setArchivedLeagues(prev => prev.filter(l => l.id !== league.id));
-            break;
-          case 'archived':
-            setArchivedLeagues(prev => {
-              const filtered = prev.filter(l => l.id !== league.id);
-              return [...filtered, league];
-            });
-            // Remove from other categories
-            setActiveLeagues(prev => prev.filter(l => l.id !== league.id));
-            setUpcomingLeagues(prev => prev.filter(l => l.id !== league.id));
-            break;
-        }
-      }
+    // Handle both league updates and storage events by reloading all data
+    const handleDataUpdate = () => {
+      loadUserData();
     };
     
-    window.addEventListener('leagueUpdate', handleLeagueUpdate);
-    window.addEventListener('storage', loadUserData);
+    window.addEventListener('leagueUpdate', handleDataUpdate);
+    window.addEventListener('storage', handleDataUpdate);
     
     return () => {
-      window.removeEventListener('leagueUpdate', handleLeagueUpdate);
-      window.removeEventListener('storage', loadUserData);
+      window.removeEventListener('leagueUpdate', handleDataUpdate);
+      window.removeEventListener('storage', handleDataUpdate);
     };
   }, [navigate, username]);
 
@@ -177,4 +141,3 @@ export const useUserData = () => {
     setTeams,
   };
 };
-
