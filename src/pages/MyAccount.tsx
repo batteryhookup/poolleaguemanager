@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/Layout";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const MyAccount = () => {
   const [activeLeagues, setActiveLeagues] = useState<League[]>([]);
+  const [pendingLeagues, setPendingLeagues] = useState<League[]>([]);
   const [archivedLeagues, setArchivedLeagues] = useState<League[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [username, setUsername] = useState("");
@@ -32,33 +34,51 @@ const MyAccount = () => {
       // Get all leagues from localStorage
       const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
       
-      // Only get leagues created by the current user
-      const userLeagues = allLeagues.filter((league: League) => 
-        league.createdBy === userData.username
-      ).map((league: League) => ({
+      // Get all leagues where the user is a creator or team member
+      const userLeagues = allLeagues.map((league: League) => ({
         ...league,
         teams: league.teams || [],
         type: league.type || 'singles',
       }));
 
-      // Separate active and archived leagues
-      const { active, archived } = userLeagues.reduce(
-        (acc: { active: League[]; archived: League[] }, league: League) => {
+      // Separate active, pending, and archived leagues
+      const { active, pending, archived } = userLeagues.reduce(
+        (acc: { active: League[]; pending: League[]; archived: League[] }, league: League) => {
+          // Check if user is the creator
+          const isCreator = league.createdBy === userData.username;
+          
+          // Check if user is a member of any team in the league
+          const isTeamMember = league.teams?.some((team: Team) => 
+            team.members.includes(userData.username)
+          );
+
+          // Only process leagues where user is involved
+          if (!isCreator && !isTeamMember) {
+            return acc;
+          }
+
           const lastSession = league.schedule?.length > 0 
             ? parseISO(league.schedule[league.schedule.length - 1].date)
             : null;
 
           if (lastSession && isPast(lastSession)) {
+            // Archived leagues (past last session)
             acc.archived.push(league);
-          } else {
+          } else if (isCreator) {
+            // Active leagues (user is creator)
             acc.active.push(league);
+          } else if (isTeamMember) {
+            // Pending leagues (user is team member but not creator)
+            acc.pending.push(league);
           }
+          
           return acc;
         },
-        { active: [], archived: [] }
+        { active: [], pending: [], archived: [] }
       );
 
       setActiveLeagues(active);
+      setPendingLeagues(pending);
       setArchivedLeagues(archived);
 
       // Filter teams - keep showing all teams where user is creator or member
@@ -90,9 +110,10 @@ const MyAccount = () => {
         <div className="grid gap-8">
           <section>
             <LeagueManagement 
-              leagues={activeLeagues} 
-              setLeagues={setActiveLeagues} 
-              archivedLeagues={archivedLeagues}
+              leagues={activeLeagues}
+              pendingLeagues={pendingLeagues}
+              archivedLeagues={archivedLeagues} 
+              setLeagues={setActiveLeagues}
             />
           </section>
 

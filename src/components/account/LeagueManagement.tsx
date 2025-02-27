@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, Archive } from "lucide-react";
+import { Trophy, Archive, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CreateLeagueForm } from "./league/CreateLeagueForm";
 import { LeagueList } from "./league/LeagueList";
@@ -11,10 +11,11 @@ import { League, LeagueManagementProps } from "./types/league";
 import { Team } from "./types/team";
 
 export interface ExtendedLeagueManagementProps extends LeagueManagementProps {
+  pendingLeagues: League[];
   archivedLeagues: League[];
 }
 
-export function LeagueManagement({ leagues, setLeagues, archivedLeagues }: ExtendedLeagueManagementProps) {
+export function LeagueManagement({ leagues, pendingLeagues, setLeagues, archivedLeagues }: ExtendedLeagueManagementProps) {
   const [activeTab, setActiveTab] = useState("my-leagues");
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -134,8 +135,9 @@ export function LeagueManagement({ leagues, setLeagues, archivedLeagues }: Exten
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="my-leagues">Active Leagues</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="my-leagues">Active</TabsTrigger>
+            <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="archives">Archives</TabsTrigger>
             <TabsTrigger value="create">Create League</TabsTrigger>
           </TabsList>
@@ -162,33 +164,56 @@ export function LeagueManagement({ leagues, setLeagues, archivedLeagues }: Exten
               />
             )}
           </TabsContent>
+          <TabsContent value="pending">
+            {pendingLeagues.length === 0 ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="w-4 h-4" />
+                <p>No pending leagues found.</p>
+              </div>
+            ) : (
+              <LeagueList
+                leagues={pendingLeagues}
+                onDeleteLeague={(league) => {
+                  setSelectedLeague(league);
+                  setIsDeleteDialogOpen(true);
+                }}
+                onAddTeam={(league) => {
+                  setSelectedLeague(league);
+                  setIsAddTeamDialogOpen(true);
+                }}
+                onDeleteTeam={(league, team) => {
+                  setSelectedLeague(league);
+                  setSelectedTeam(team as Team);
+                  setIsDeleteTeamDialogOpen(true);
+                }}
+                onUpdateLeague={handleUpdateLeague}
+              />
+            )}
+          </TabsContent>
           <TabsContent value="archives">
             {archivedLeagues.length === 0 ? (
-              <p className="text-muted-foreground">No archived leagues found.</p>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Archive className="w-4 h-4 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Leagues are automatically archived after their last session date.</p>
-                </div>
-                <LeagueList
-                  leagues={archivedLeagues}
-                  onDeleteLeague={(league) => {
-                    setSelectedLeague(league);
-                    setIsDeleteDialogOpen(true);
-                  }}
-                  onAddTeam={(league) => {
-                    setSelectedLeague(league);
-                    setIsAddTeamDialogOpen(true);
-                  }}
-                  onDeleteTeam={(league, team) => {
-                    setSelectedLeague(league);
-                    setSelectedTeam(team as Team);
-                    setIsDeleteTeamDialogOpen(true);
-                  }}
-                  onUpdateLeague={handleUpdateLeague}
-                />
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Archive className="w-4 h-4" />
+                <p>No archived leagues found.</p>
               </div>
+            ) : (
+              <LeagueList
+                leagues={archivedLeagues}
+                onDeleteLeague={(league) => {
+                  setSelectedLeague(league);
+                  setIsDeleteDialogOpen(true);
+                }}
+                onAddTeam={(league) => {
+                  setSelectedLeague(league);
+                  setIsAddTeamDialogOpen(true);
+                }}
+                onDeleteTeam={(league, team) => {
+                  setSelectedLeague(league);
+                  setSelectedTeam(team as Team);
+                  setIsDeleteTeamDialogOpen(true);
+                }}
+                onUpdateLeague={handleUpdateLeague}
+              />
             )}
           </TabsContent>
           <TabsContent value="create">
