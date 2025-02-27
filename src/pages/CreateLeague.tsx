@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { categorizeLeague } from "@/hooks/useUserData";
+import { League } from "@/components/account/types/league";
 
 const CreateLeague = () => {
   const [leagueName, setLeagueName] = useState("");
@@ -64,19 +65,19 @@ const CreateLeague = () => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
-      const newLeague = {
+      const newLeague: League = {
         id: Date.now(),
         name: leagueName,
         location,
         password,
         createdAt: new Date().toISOString(),
         createdBy: currentUser.username,
-        type: "singles", // Default type
-        gameType: "8-ball", // Default game type
-        teams: [], // Initialize empty teams array
+        type: "singles" as const, // explicitly set as 'singles' literal type
+        gameType: "8-ball",
+        teams: [],
         schedule: [
           {
-            date: yesterday.toISOString().split('T')[0], // For testing purposes, set to yesterday
+            date: yesterday.toISOString().split('T')[0],
             startTime: "19:00",
             endTime: "22:00"
           }
