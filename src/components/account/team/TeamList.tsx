@@ -12,6 +12,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
 
 interface TeamListProps {
   teams: Team[];
@@ -22,7 +32,11 @@ interface TeamListProps {
 export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const [isAcceptCaptainOpen, setIsAcceptCaptainOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const { toast } = useToast();
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
 
   const handleAddPlayers = (team: Team) => {
@@ -35,8 +49,52 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
     setIsTransferOpen(true);
   };
 
-  const onTransferCaptain = (newCaptain: string, newPassword: string) => {
+  const onTransferCaptain = (newCaptain: string) => {
     if (!selectedTeam) return;
+
+    // Store the pending transfer in localStorage
+    const pendingTransfers = JSON.parse(localStorage.getItem("pendingCaptainTransfers") || "[]");
+    pendingTransfers.push({
+      teamId: selectedTeam.id,
+      newCaptain: newCaptain,
+      timestamp: new Date().toISOString(),
+    });
+    localStorage.setItem("pendingCaptainTransfers", JSON.stringify(pendingTransfers));
+
+    // Create a notification for the new captain
+    const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
+    notifications.push({
+      id: Date.now(),
+      userId: newCaptain,
+      message: `You have been selected as the new team captain for "${selectedTeam.name}". Please accept the role and set a new team password.`,
+      read: false,
+      timestamp: new Date().toISOString(),
+    });
+    localStorage.setItem("notifications", JSON.stringify(notifications));
+
+    setIsTransferOpen(false);
+    setSelectedTeam(null);
+
+    // Trigger storage event to refresh other tabs
+    window.dispatchEvent(new Event("storage"));
+  };
+
+  const handleAcceptCaptain = (team: Team) => {
+    setSelectedTeam(team);
+    setIsAcceptCaptainOpen(true);
+  };
+
+  const submitAcceptCaptain = () => {
+    if (!selectedTeam || !newPassword || newPassword !== confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: newPassword !== confirmPassword ? 
+          "Passwords do not match" : 
+          "Please enter a new password",
+      });
+      return;
+    }
 
     // Update the team in localStorage
     const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
@@ -44,31 +102,44 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
       if (t.id === selectedTeam.id) {
         return {
           ...t,
-          createdBy: newCaptain,
+          createdBy: currentUser.username,
           password: newPassword,
         };
       }
       return t;
     });
-
     localStorage.setItem("teams", JSON.stringify(updatedTeams));
 
-    // Create a congratulatory message for the new captain
+    // Remove the pending transfer
+    const pendingTransfers = JSON.parse(localStorage.getItem("pendingCaptainTransfers") || "[]");
+    const filteredTransfers = pendingTransfers.filter(
+      (transfer: any) => transfer.teamId !== selectedTeam.id
+    );
+    localStorage.setItem("pendingCaptainTransfers", JSON.stringify(filteredTransfers));
+
+    // Create notifications for both users
     const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
     notifications.push({
       id: Date.now(),
-      userId: newCaptain,
-      message: `Congratulations! You are now the team captain of "${selectedTeam.name}". Your new team password has been set.`,
+      userId: selectedTeam.createdBy,
+      message: `${currentUser.username} has accepted the team captain role for "${selectedTeam.name}".`,
       read: false,
       timestamp: new Date().toISOString(),
     });
     localStorage.setItem("notifications", JSON.stringify(notifications));
 
+    setIsAcceptCaptainOpen(false);
+    setSelectedTeam(null);
+    setNewPassword("");
+    setConfirmPassword("");
+
+    toast({
+      title: "Success",
+      description: "You are now the team captain.",
+    });
+
     // Trigger storage event to refresh other tabs
     window.dispatchEvent(new Event("storage"));
-
-    setIsTransferOpen(false);
-    setSelectedTeam(null);
   };
 
   if (teams.length === 0) {
@@ -79,6 +150,9 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
     );
   }
 
+  // Get pending transfers from localStorage
+  const pendingTransfers = JSON.parse(localStorage.getItem("pendingCaptainTransfers") || "[]");
+
   return (
     <TooltipProvider>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -86,6 +160,11 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
           const pendingInvites = JSON.parse(localStorage.getItem("teamInvites") || "[]")
             .filter((invite: any) => invite.teamId === team.id && invite.status === "pending");
           const isCreator = team.createdBy === currentUser.username;
+          const isPendingNewCaptain = pendingTransfers.some(
+            (transfer: any) => 
+              transfer.teamId === team.id && 
+              transfer.newCaptain === currentUser.username
+          );
 
           return (
             <Card key={team.id}>
@@ -108,6 +187,16 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
                                   <p>Team Captain</p>
                                 </TooltipContent>
                               </Tooltip>
+                            )}
+                            {isPendingNewCaptain && member === currentUser.username && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAcceptCaptain(team)}
+                                className="h-7 text-xs"
+                              >
+                                Accept Captain Role
+                              </Button>
                             )}
                           </div>
                           {member === currentUser.username && !isCreator && (
@@ -195,6 +284,54 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
         team={selectedTeam}
         onTransferCaptain={onTransferCaptain}
       />
+
+      <Dialog open={isAcceptCaptainOpen} onOpenChange={setIsAcceptCaptainOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Accept Team Captain Role</DialogTitle>
+            <DialogDescription>
+              Please set a new team password to accept the captain role.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Team Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new team password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new team password"
+              />
+            </div>
+            <div className="flex justify-end space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsAcceptCaptainOpen(false);
+                  setNewPassword("");
+                  setConfirmPassword("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={submitAcceptCaptain} disabled={!newPassword || !confirmPassword}>
+                Accept & Set Password
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }

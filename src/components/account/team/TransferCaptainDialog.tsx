@@ -1,7 +1,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -18,12 +17,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Team } from "../types/team";
+import { useToast } from "@/components/ui/use-toast";
 
 interface TransferCaptainDialogProps {
   isOpen: boolean;
   onClose: () => void;
   team: Team | null;
-  onTransferCaptain: (newCaptain: string, password: string) => void;
+  onTransferCaptain: (newCaptain: string) => void;
 }
 
 export function TransferCaptainDialog({
@@ -33,13 +33,16 @@ export function TransferCaptainDialog({
   onTransferCaptain,
 }: TransferCaptainDialogProps) {
   const [selectedMember, setSelectedMember] = useState<string>("");
-  const [newPassword, setNewPassword] = useState("");
+  const { toast } = useToast();
 
   const handleSubmit = () => {
-    if (selectedMember && newPassword) {
-      onTransferCaptain(selectedMember, newPassword);
+    if (selectedMember) {
+      onTransferCaptain(selectedMember);
       setSelectedMember("");
-      setNewPassword("");
+      toast({
+        title: "Success",
+        description: `Team captain transfer request sent to ${selectedMember}`,
+      });
     }
   };
 
@@ -49,8 +52,8 @@ export function TransferCaptainDialog({
         <DialogHeader>
           <DialogTitle>Transfer Team Captain Role</DialogTitle>
           <DialogDescription>
-            Select a new team captain and set a new team password. You will be able
-            to leave the team after transferring captaincy.
+            Select a team member to transfer the captain role to. They will need to accept
+            the transfer and set a new team password.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-4">
@@ -65,29 +68,21 @@ export function TransferCaptainDialog({
               </SelectTrigger>
               <SelectContent>
                 {team?.members.map((member) => (
-                  <SelectItem key={member} value={member}>
-                    {member}
-                  </SelectItem>
+                  member !== team.createdBy && (
+                    <SelectItem key={member} value={member}>
+                      {member}
+                    </SelectItem>
+                  )
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">New Team Password</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Enter new team password"
-            />
           </div>
           <div className="flex justify-end space-x-4">
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={!selectedMember || !newPassword}>
-              Transfer Captaincy
+            <Button onClick={handleSubmit} disabled={!selectedMember}>
+              Send Transfer Request
             </Button>
           </div>
         </div>
