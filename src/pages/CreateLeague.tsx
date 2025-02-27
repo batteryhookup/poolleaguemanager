@@ -106,7 +106,7 @@ const CreateLeague = () => {
       // Trigger the league update event
       window.dispatchEvent(new Event('leagueUpdate'));
 
-      // Show explanation dialog which will handle navigation when closed
+      // Show explanation dialog
       setShowExplanationDialog(true);
     } catch (error) {
       console.error("Error creating league:", error);
@@ -225,3 +225,4 @@ const CreateLeague = () => {
 };
 
 export default CreateLeague;
+
