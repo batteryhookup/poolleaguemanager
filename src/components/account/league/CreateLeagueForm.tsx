@@ -25,6 +25,8 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
   const [leagueType, setLeagueType] = useState<"team" | "singles">("singles");
   const [maxPlayersPerTeam, setMaxPlayersPerTeam] = useState("");
   const [playersPerNight, setPlayersPerNight] = useState("");
+  const [gameType, setGameType] = useState("8-ball");
+  const [customGameType, setCustomGameType] = useState("");
   const { toast } = useToast();
 
   const handleCreateLeague = (e: React.FormEvent) => {
@@ -68,6 +70,8 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
       }
     }
 
+    const finalGameType = gameType === "specify" ? customGameType : gameType;
+
     const newLeague: League = {
       id: Date.now(),
       name: leagueName,
@@ -77,6 +81,7 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
       createdBy: currentUser.username,
       teams: [],
       type: leagueType,
+      gameType: finalGameType,
       ...(leagueType === "team" && {
         maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
         playersPerNight: parseInt(playersPerNight),
@@ -90,6 +95,8 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
     setLeagueType("singles");
     setMaxPlayersPerTeam("");
     setPlayersPerNight("");
+    setGameType("8-ball");
+    setCustomGameType("");
     onComplete();
 
     toast({
@@ -123,11 +130,33 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="gameType">Game Type</Label>
+        <Select value={gameType} onValueChange={setGameType}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select game type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="8-ball">8 Ball</SelectItem>
+            <SelectItem value="9-ball">9 Ball</SelectItem>
+            <SelectItem value="10-ball">10 Ball</SelectItem>
+            <SelectItem value="specify">Specify Other</SelectItem>
+          </SelectContent>
+        </Select>
+        {gameType === "specify" && (
+          <div className="mt-2">
+            <Input
+              placeholder="Enter custom game type"
+              value={customGameType}
+              onChange={(e) => setCustomGameType(e.target.value)}
+              required
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="leagueType">League Type</Label>
-        <Select
-          value={leagueType}
-          onValueChange={(value: "team" | "singles") => setLeagueType(value)}
-        >
+        <Select value={leagueType} onValueChange={(value: "team" | "singles") => setLeagueType(value)}>
           <SelectTrigger>
             <SelectValue placeholder="Select league type" />
           </SelectTrigger>

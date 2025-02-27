@@ -15,6 +15,7 @@ export interface League {
   type: 'team' | 'singles';
   maxPlayersPerTeam?: number;
   playersPerNight?: number;
+  gameType: string;
 }
 
 export interface LeagueManagementProps {

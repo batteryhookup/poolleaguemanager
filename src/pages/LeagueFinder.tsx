@@ -61,7 +61,8 @@ const LeagueFinder = () => {
               <TableRow>
                 <TableHead>League Name</TableHead>
                 <TableHead>Location</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>Game Type</TableHead>
+                <TableHead>League Type</TableHead>
                 <TableHead>Team Details</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
@@ -71,6 +72,7 @@ const LeagueFinder = () => {
                 <TableRow key={league.id}>
                   <TableCell className="font-medium">{league.name}</TableCell>
                   <TableCell>{league.location}</TableCell>
+                  <TableCell>{league.gameType}</TableCell>
                   <TableCell className="capitalize">{league.type}</TableCell>
                   <TableCell>
                     {league.type === 'team' && (
@@ -88,7 +90,7 @@ const LeagueFinder = () => {
               ))}
               {sortedLeagues.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-6">
+                  <TableCell colSpan={6} className="text-center py-6">
                     No leagues found. Try a different search term or create a new league.
                   </TableCell>
                 </TableRow>
