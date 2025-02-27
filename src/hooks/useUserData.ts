@@ -122,6 +122,18 @@ export const useUserData = () => {
 
   useEffect(() => {
     loadUserData();
+    
+    // Add event listener for league updates
+    const handleLeagueUpdate = () => {
+      console.log("League update detected, reloading user data");
+      loadUserData();
+    };
+    
+    window.addEventListener('leagueUpdate', handleLeagueUpdate);
+    
+    return () => {
+      window.removeEventListener('leagueUpdate', handleLeagueUpdate);
+    };
   }, [navigate]);
 
   return {

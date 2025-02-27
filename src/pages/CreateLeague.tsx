@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { parseISO } from "date-fns";
 
 const CreateLeague = () => {
   const [leagueName, setLeagueName] = useState("");
@@ -59,6 +60,10 @@ const CreateLeague = () => {
         return;
       }
 
+      // Get yesterday's date for testing
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+
       const newLeague = {
         id: Date.now(),
         name: leagueName,
@@ -67,17 +72,30 @@ const CreateLeague = () => {
         createdAt: new Date().toISOString(),
         createdBy: currentUser.username,
         type: "singles", // Default type
+        gameType: "8-ball", // Default game type
+        teams: [], // Initialize empty teams array
+        schedule: [
+          {
+            date: yesterday.toISOString().split('T')[0], // For testing purposes, set to yesterday
+            startTime: "19:00",
+            endTime: "22:00"
+          }
+        ]
       };
 
+      // Add the new league
       existingLeagues.push(newLeague);
       localStorage.setItem("leagues", JSON.stringify(existingLeagues));
+
+      // Dispatch a custom event to notify components about the league update
+      window.dispatchEvent(new CustomEvent('leagueUpdate', { detail: newLeague }));
 
       toast({
         title: "Success",
         description: "League created successfully!",
       });
 
-      navigate("/leagues/find");
+      navigate("/account");
     } catch (error) {
       toast({
         variant: "destructive",
@@ -87,28 +105,6 @@ const CreateLeague = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleTeamJoinRequest = () => {
-    const currentUser = localStorage.getItem("currentUser");
-    if (!currentUser) return;
-
-    const username = JSON.parse(currentUser).username;
-    const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
-    const userTeams = allTeams.filter((team: { createdBy: string; members: string[] }) => 
-      team.createdBy === username || team.members.includes(username)
-    );
-
-    if (userTeams.length === 0) {
-      toast({
-        title: "Create a Team",
-        description: "You need to create a team first to join as a team. Would you like to create one now?",
-        action: <Button onClick={() => navigate("/account")}>Create Team</Button>,
-      });
-      return;
-    }
-
-    // Continue with team join logic...
   };
 
   return (
