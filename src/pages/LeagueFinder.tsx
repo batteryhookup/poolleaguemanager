@@ -214,7 +214,7 @@ const LeagueFinder = () => {
                   <TableCell>{league.gameType}</TableCell>
                   <TableCell className="capitalize">{league.type}</TableCell>
                   <TableCell>{getScheduleDescription(league)}</TableCell>
-                  <TableCell>{getLeagueStatus(league.schedule)}</TableCell>
+                  <TableCell>{getLeagueStatus(league)}</TableCell>
                   <TableCell className="text-right">
                     <Button
                       variant="outline"
