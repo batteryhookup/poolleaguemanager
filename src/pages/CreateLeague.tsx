@@ -88,23 +88,22 @@ const CreateLeague = () => {
       existingLeagues.push(newLeague);
       localStorage.setItem("leagues", JSON.stringify(existingLeagues));
 
-      // Get the category for the new league
-      const category = categorizeLeague(newLeague, currentUser.username);
-      console.log(`New league category: ${category}`);
+      // Get the correct category for the new league
+      const leagueCategory = categorizeLeague(newLeague, currentUser.username);
 
-      // Create a custom event with the new league data and its category
-      const leagueUpdateEvent = new CustomEvent('leagueUpdate', { 
-        detail: { 
-          league: newLeague, 
-          category,
+      // Create and dispatch the leagueUpdate event with the correct category
+      const leagueUpdateEvent = new CustomEvent('leagueUpdate', {
+        detail: {
+          league: newLeague,
+          category: leagueCategory,
           action: 'create'
         }
       });
 
       // Force a storage event for cross-tab updates
       localStorage.setItem('lastLeagueUpdate', Date.now().toString());
-      
-      // Dispatch both events
+
+      // Dispatch the event
       window.dispatchEvent(leagueUpdateEvent);
 
       toast({
@@ -195,4 +194,3 @@ const CreateLeague = () => {
 };
 
 export default CreateLeague;
-
