@@ -198,10 +198,10 @@ export function LeagueScheduler({ sessions, onSessionsChange }: LeagueSchedulerP
           )}
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => handleAddSession(false)}>
-              No, Just This Session
+              One Day Only
             </Button>
             <Button onClick={() => handleAddSession(true)}>
-              Yes, Make it Weekly
+              Yes, Make It Weekly
             </Button>
           </DialogFooter>
         </DialogContent>
