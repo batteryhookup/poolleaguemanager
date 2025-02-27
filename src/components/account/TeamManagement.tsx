@@ -19,6 +19,7 @@ import {
 export function TeamManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
   const [teamName, setTeamName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -96,11 +97,21 @@ export function TeamManagement() {
   const confirmDeleteTeam = () => {
     if (!selectedTeam) return;
 
+    if (deletePassword !== selectedTeam.password) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Incorrect team password.",
+      });
+      return;
+    }
+
     const updatedTeams = teams.filter((team) => team.id !== selectedTeam.id);
     localStorage.setItem("teams", JSON.stringify(updatedTeams));
     setTeams(updatedTeams);
     setIsDeleteDialogOpen(false);
     setSelectedTeam(null);
+    setDeletePassword("");
 
     toast({
       title: "Success",
@@ -146,7 +157,7 @@ export function TeamManagement() {
                           size="icon"
                           onClick={() => handleDeleteTeam(team)}
                         >
-                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-red-600" />
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
                         </Button>
                       </CardHeader>
                     </Card>
@@ -205,23 +216,37 @@ export function TeamManagement() {
           <DialogHeader>
             <DialogTitle>Delete Team</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this team? This action cannot be
-              undone.
+              To delete "{selectedTeam?.name}", please enter the team password.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end space-x-4">
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmDeleteTeam}
-            >
-              Delete
-            </Button>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="deletePassword">Team Password</Label>
+              <Input
+                id="deletePassword"
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Enter team password"
+              />
+            </div>
+            <div className="flex justify-end space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteDialogOpen(false);
+                  setDeletePassword("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDeleteTeam}
+              >
+                Delete
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
