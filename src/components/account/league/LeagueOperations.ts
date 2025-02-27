@@ -3,11 +3,19 @@ import { League } from "../types/league";
 import { Team } from "../types/team";
 import { toast } from "@/hooks/use-toast";
 
-export const createLeague = (newLeague: League, leagues: League[], setLeagues: (leagues: League[]) => void) => {
+export const createLeague = (newLeague: League, leagues: League[], setLeagues: (leagues: League[]) => void, showToast: boolean = true) => {
   const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
   const updatedLeagues = [...existingLeagues, newLeague];
   localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
   setLeagues([...leagues, newLeague]);
+  
+  // Only show toast if specifically requested
+  if (showToast) {
+    toast({
+      title: "Success",
+      description: "League created successfully!",
+    });
+  }
 };
 
 export const deleteLeague = (

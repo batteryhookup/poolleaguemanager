@@ -92,7 +92,7 @@ const CreateLeague = () => {
         ]
       };
 
-      // First, update localStorage
+      // First, update localStorage directly without using LeagueOperations
       existingLeagues.push(newLeague);
       localStorage.setItem("leagues", JSON.stringify(existingLeagues));
       

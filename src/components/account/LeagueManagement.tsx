@@ -35,7 +35,7 @@ export function LeagueManagement({
   const [isDeleteTeamDialogOpen, setIsDeleteTeamDialogOpen] = useState(false);
 
   const handleCreateLeague = (newLeague: League) => {
-    createLeague(newLeague, leagues, setLeagues);
+    createLeague(newLeague, leagues, setLeagues, true);
   };
 
   const handleDeleteLeague = (password: string) => {
