@@ -8,6 +8,7 @@ import { CreateLeagueForm } from "./league/CreateLeagueForm";
 import { LeagueList } from "./league/LeagueList";
 import { LeagueDialogs } from "./league/LeagueDialogs";
 import { League, LeagueManagementProps } from "./types/league";
+import { Team } from "./types/team";
 
 export interface ExtendedLeagueManagementProps extends LeagueManagementProps {
   archivedLeagues: League[];
@@ -51,6 +52,55 @@ export function LeagueManagement({ leagues, setLeagues, archivedLeagues }: Exten
     toast({
       title: "Success",
       description: "League deleted successfully!",
+    });
+  };
+
+  const handleAddTeam = (teamName: string) => {
+    if (!selectedLeague) return;
+
+    const newTeam: Team = {
+      id: Date.now(),
+      name: teamName
+    };
+
+    const updatedLeague = {
+      ...selectedLeague,
+      teams: [...(selectedLeague.teams || []), newTeam]
+    };
+
+    handleUpdateLeague(updatedLeague);
+    setIsAddTeamDialogOpen(false);
+
+    toast({
+      title: "Success",
+      description: "Team added successfully!",
+    });
+  };
+
+  const handleDeleteTeam = (password: string) => {
+    if (!selectedLeague || !selectedTeam) return;
+
+    if (password !== selectedLeague.password) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Incorrect league password.",
+      });
+      return;
+    }
+
+    const updatedLeague = {
+      ...selectedLeague,
+      teams: selectedLeague.teams.filter(team => team.id !== selectedTeam.id)
+    };
+
+    handleUpdateLeague(updatedLeague);
+    setSelectedTeam(null);
+    setIsDeleteTeamDialogOpen(false);
+
+    toast({
+      title: "Success",
+      description: "Team deleted successfully!",
     });
   };
 
@@ -128,7 +178,6 @@ export function LeagueManagement({ leagues, setLeagues, archivedLeagues }: Exten
                     setIsDeleteTeamDialogOpen(true);
                   }}
                   onUpdateLeague={handleUpdateLeague}
-                  isArchived
                 />
               </div>
             )}
@@ -158,3 +207,4 @@ export function LeagueManagement({ leagues, setLeagues, archivedLeagues }: Exten
     </Card>
   );
 }
+
