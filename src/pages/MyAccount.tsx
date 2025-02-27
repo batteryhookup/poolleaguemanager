@@ -7,9 +7,11 @@ import { TeamManagement } from "@/components/account/TeamManagement";
 import { StatsManagement } from "@/components/account/StatsManagement";
 import { AccountActions } from "@/components/account/AccountActions";
 import { League } from "@/components/account/types/league";
+import { Team } from "@/components/account/types/team";
 
 const MyAccount = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,15 +21,25 @@ const MyAccount = () => {
       return;
     }
 
+    const username = JSON.parse(currentUser).username;
+
+    // Filter leagues
     const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     const userLeagues = allLeagues.filter(
-      (league: League) => league.createdBy === JSON.parse(currentUser).username
+      (league: League) => league.createdBy === username
     ).map((league: League) => ({
       ...league,
       teams: league.teams || [],
-      type: league.type || 'singles', // Provide default value for existing leagues
+      type: league.type || 'singles',
     }));
     setLeagues(userLeagues);
+
+    // Filter teams - only show teams where the user is either the creator or a member
+    const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+    const userTeams = allTeams.filter((team: Team) => 
+      team.createdBy === username || team.members.includes(username)
+    );
+    setTeams(userTeams);
   }, [navigate]);
 
   return (
@@ -41,7 +53,7 @@ const MyAccount = () => {
           </section>
 
           <section>
-            <TeamManagement />
+            <TeamManagement userTeams={teams} setUserTeams={setTeams} />
           </section>
 
           <section>
