@@ -1,12 +1,21 @@
+
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { categorizeLeague } from "@/hooks/useUserData";
 import { League } from "@/components/account/types/league";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const CreateLeague = () => {
   const [leagueName, setLeagueName] = useState("");
@@ -14,6 +23,7 @@ const CreateLeague = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showExplanationDialog, setShowExplanationDialog] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -28,6 +38,12 @@ const CreateLeague = () => {
       navigate("/");
     }
   }, [navigate, toast]);
+
+  const handleDialogClose = () => {
+    setShowExplanationDialog(false);
+    // Refresh the page by navigating to the account page
+    navigate("/account");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +109,8 @@ const CreateLeague = () => {
         description: "League created successfully!",
       });
 
-      navigate("/account");
+      // Instead of navigating immediately, show the explanation dialog
+      setShowExplanationDialog(true);
     } catch (error) {
       console.error("Error creating league:", error);
       toast({
@@ -171,6 +188,30 @@ const CreateLeague = () => {
             {isLoading ? "Creating..." : "Create League"}
           </Button>
         </form>
+
+        <Dialog open={showExplanationDialog} onOpenChange={handleDialogClose}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>League Successfully Created!</DialogTitle>
+              <DialogDescription className="space-y-4 pt-4">
+                <p>
+                  Your league has been created and will appear in one of these tabs based on its schedule:
+                </p>
+                <ul className="list-disc pl-6 space-y-2">
+                  <li><strong>Upcoming:</strong> Leagues that haven't started yet</li>
+                  <li><strong>Active:</strong> Leagues currently in progress</li>
+                  <li><strong>Archived:</strong> Leagues that have ended</li>
+                </ul>
+                <p>
+                  Click OK to view your leagues in their appropriate tabs.
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={handleDialogClose}>OK</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
