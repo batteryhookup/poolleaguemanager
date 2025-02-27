@@ -66,6 +66,7 @@ const CreateLeague = () => {
         password,
         createdAt: new Date().toISOString(),
         createdBy: currentUser.username,
+        type: "singles", // Default type
       };
 
       existingLeagues.push(newLeague);
@@ -86,6 +87,28 @@ const CreateLeague = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleTeamJoinRequest = () => {
+    const currentUser = localStorage.getItem("currentUser");
+    if (!currentUser) return;
+
+    const username = JSON.parse(currentUser).username;
+    const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+    const userTeams = allTeams.filter((team: { createdBy: string; members: string[] }) => 
+      team.createdBy === username || team.members.includes(username)
+    );
+
+    if (userTeams.length === 0) {
+      toast({
+        title: "Create a Team",
+        description: "You need to create a team first to join as a team. Would you like to create one now?",
+        action: <Button onClick={() => navigate("/account")}>Create Team</Button>,
+      });
+      return;
+    }
+
+    // Continue with team join logic...
   };
 
   return (
@@ -159,4 +182,3 @@ const CreateLeague = () => {
 };
 
 export default CreateLeague;
-

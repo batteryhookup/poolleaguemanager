@@ -39,6 +39,7 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
   const [teamToLeave, setTeamToLeave] = useState<Team | null>(null);
   const [leavePassword, setLeavePassword] = useState("");
   const [teamInvites, setTeamInvites] = useState<TeamInvite[]>([]);
+  const [activeTab, setActiveTab] = useState("my-teams");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -79,6 +80,7 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
     const updatedTeams = [...existingTeams, newTeam];
     localStorage.setItem("teams", JSON.stringify(updatedTeams));
     setUserTeams([...userTeams, newTeam]);
+    setActiveTab("my-teams");
   };
 
   const handleDeleteTeam = (team: Team) => {
@@ -270,7 +272,7 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
           </div>
         )}
 
-        <Tabs defaultValue="my-teams" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="my-teams">My Teams</TabsTrigger>
             <TabsTrigger value="create-team">Create Team</TabsTrigger>
@@ -351,3 +353,4 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
     </Card>
   );
 }
+
