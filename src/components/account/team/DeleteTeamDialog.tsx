@@ -18,6 +18,9 @@ interface DeleteTeamDialogProps {
   onConfirmDelete: (password: string) => void;
   deletePassword: string;
   onDeletePasswordChange: (password: string) => void;
+  title?: string;
+  description?: string;
+  confirmText?: string;
 }
 
 export function DeleteTeamDialog({
@@ -27,14 +30,17 @@ export function DeleteTeamDialog({
   onConfirmDelete,
   deletePassword,
   onDeletePasswordChange,
+  title = "Delete Team",
+  description = 'To delete "{teamName}", please enter the team password.',
+  confirmText = "Delete",
 }: DeleteTeamDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Team</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            To delete "{selectedTeam?.name}", please enter the team password.
+            {description.replace("{teamName}", selectedTeam?.name || "")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-4">
@@ -62,7 +68,7 @@ export function DeleteTeamDialog({
               variant="destructive"
               onClick={() => onConfirmDelete(deletePassword)}
             >
-              Delete
+              {confirmText}
             </Button>
           </div>
         </div>
