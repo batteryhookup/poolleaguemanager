@@ -7,6 +7,7 @@ import { Users } from "lucide-react";
 import { Team } from "./types/team";
 import { DeleteTeamDialog } from "./team/DeleteTeamDialog";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface TeamManagementProps {
   userTeams: Team[];
@@ -66,17 +67,27 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
           <CardTitle>My Teams</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <CreateTeamForm 
-          onCreateTeam={handleCreateTeam} 
-          onComplete={() => {
-            toast({
-              title: "Success",
-              description: "Team created successfully.",
-            });
-          }} 
-        />
-        <TeamList teams={userTeams} onDeleteTeam={handleDeleteTeam} />
+      <CardContent>
+        <Tabs defaultValue="my-teams" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="my-teams">My Teams</TabsTrigger>
+            <TabsTrigger value="create-team">Create Team</TabsTrigger>
+          </TabsList>
+          <TabsContent value="my-teams" className="space-y-4">
+            <TeamList teams={userTeams} onDeleteTeam={handleDeleteTeam} />
+          </TabsContent>
+          <TabsContent value="create-team">
+            <CreateTeamForm 
+              onCreateTeam={handleCreateTeam} 
+              onComplete={() => {
+                toast({
+                  title: "Success",
+                  description: "Team created successfully.",
+                });
+              }} 
+            />
+          </TabsContent>
+        </Tabs>
       </CardContent>
 
       <DeleteTeamDialog
