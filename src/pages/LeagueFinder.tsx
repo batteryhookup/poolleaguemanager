@@ -15,15 +15,95 @@ import { Search } from "lucide-react";
 import { League } from "@/components/account/types/league";
 import { format, parseISO, isFuture, isPast } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Team } from "@/components/account/types/team";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const LeagueFinder = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
+  const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
+  const [joinType, setJoinType] = useState<"player" | "team">("player");
+  const [selectedTeam, setSelectedTeam] = useState<string>("");
+  const [userTeams, setUserTeams] = useState<Team[]>([]);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     const storedLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     setLeagues(storedLeagues);
+
+    // Get user's teams where they are captain
+    const currentUser = localStorage.getItem("currentUser");
+    if (currentUser) {
+      const username = JSON.parse(currentUser).username;
+      const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+      const captainTeams = allTeams.filter((team: Team) => team.createdBy === username);
+      setUserTeams(captainTeams);
+    }
   }, []);
+
+  const handleJoinClick = (league: League) => {
+    const currentUser = localStorage.getItem("currentUser");
+    if (!currentUser) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in or create an account to join a league.",
+      });
+      navigate("/");
+      return;
+    }
+
+    setSelectedLeague(league);
+    setIsJoinDialogOpen(true);
+  };
+
+  const handleJoinRequest = () => {
+    if (!selectedLeague) return;
+
+    const currentUser = localStorage.getItem("currentUser");
+    if (!currentUser) return;
+
+    const username = JSON.parse(currentUser).username;
+    const existingRequests = JSON.parse(localStorage.getItem("leagueRequests") || "[]");
+    
+    const newRequest = {
+      id: Date.now(),
+      leagueId: selectedLeague.id,
+      requestType: joinType,
+      username,
+      teamId: joinType === "team" ? selectedTeam : null,
+      status: "pending",
+      timestamp: new Date().toISOString(),
+    };
+
+    localStorage.setItem("leagueRequests", JSON.stringify([...existingRequests, newRequest]));
+    
+    setIsJoinDialogOpen(false);
+    setSelectedLeague(null);
+    setJoinType("player");
+    setSelectedTeam("");
+
+    toast({
+      title: "Request Sent",
+      description: "Your request to join the league has been sent to the league owner.",
+    });
+  };
 
   const getLeagueStatus = (sessions: League["schedule"]) => {
     if (!sessions || sessions.length === 0) return null;
@@ -114,7 +194,11 @@ const LeagueFinder = () => {
                   <TableCell>{getScheduleDescription(league)}</TableCell>
                   <TableCell>{getLeagueStatus(league.schedule)}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleJoinClick(league)}
+                    >
                       Join League
                     </Button>
                   </TableCell>
@@ -131,8 +215,77 @@ const LeagueFinder = () => {
           </Table>
         </div>
       </div>
+
+      <Dialog open={isJoinDialogOpen} onOpenChange={setIsJoinDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Join League</DialogTitle>
+            <DialogDescription>
+              Choose how you would like to join {selectedLeague?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <label>Join as:</label>
+              <Select
+                value={joinType}
+                onValueChange={(value: "player" | "team") => setJoinType(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select join type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="player">Individual Player</SelectItem>
+                  {userTeams.length > 0 && (
+                    <SelectItem value="team">Team</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {joinType === "team" && userTeams.length > 0 && (
+              <div className="space-y-2">
+                <label>Select Team:</label>
+                <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userTeams.map((team) => (
+                      <SelectItem key={team.id} value={team.id.toString()}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsJoinDialogOpen(false);
+                  setSelectedLeague(null);
+                  setJoinType("player");
+                  setSelectedTeam("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleJoinRequest}
+                disabled={joinType === "team" && !selectedTeam}
+              >
+                Send Request
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
 
 export default LeagueFinder;
+
