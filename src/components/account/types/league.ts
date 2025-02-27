@@ -4,6 +4,12 @@ export interface Team {
   name: string;
 }
 
+export interface LeagueSession {
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
 export interface League {
   id: number;
   name: string;
@@ -16,6 +22,7 @@ export interface League {
   maxPlayersPerTeam?: number;
   playersPerNight?: number;
   gameType: string;
+  schedule: LeagueSession[];
 }
 
 export interface LeagueManagementProps {
@@ -29,4 +36,3 @@ export interface EditLeagueDialogProps {
   onClose: () => void;
   onSave: (updatedLeague: League) => void;
 }
-

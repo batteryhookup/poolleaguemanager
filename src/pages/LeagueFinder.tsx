@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { League } from "@/components/account/types/league";
+import { format, parseISO, isFuture, isPast } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 
 const LeagueFinder = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
@@ -22,6 +24,40 @@ const LeagueFinder = () => {
     const storedLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     setLeagues(storedLeagues);
   }, []);
+
+  const getLeagueStatus = (sessions: League["schedule"]) => {
+    if (!sessions || sessions.length === 0) return null;
+
+    const firstSession = parseISO(sessions[0].date);
+    const lastSession = parseISO(sessions[sessions.length - 1].date);
+    const now = new Date();
+
+    if (isPast(lastSession)) {
+      return <Badge variant="secondary">Ended</Badge>;
+    } else if (isFuture(firstSession)) {
+      return <Badge variant="default">Upcoming</Badge>;
+    } else {
+      return <Badge variant="default" className="bg-green-500">Ongoing</Badge>;
+    }
+  };
+
+  const getScheduleDescription = (league: League) => {
+    if (!league.schedule || league.schedule.length === 0) return "No schedule available";
+
+    const firstSession = parseISO(league.schedule[0].date);
+    const lastSession = parseISO(league.schedule[league.schedule.length - 1].date);
+    const dayOfWeek = format(firstSession, "EEEE");
+    const timeOfDay = parseInt(league.schedule[0].startTime.split(":")[0]) < 17 ? "afternoons" : "nights";
+    
+    const dateRange = `${format(firstSession, "MMM d, yyyy")} - ${format(lastSession, "MMM d, yyyy")}`;
+    
+    if (isFuture(firstSession)) {
+      const startingIn = format(firstSession, "'Starting' MMM d, yyyy");
+      return `${dayOfWeek} ${timeOfDay}, ${startingIn}`;
+    }
+
+    return `${dayOfWeek} ${timeOfDay}, ${dateRange}`;
+  };
 
   const filteredLeagues = leagues.filter(
     (league) =>
@@ -63,7 +99,8 @@ const LeagueFinder = () => {
                 <TableHead>Location</TableHead>
                 <TableHead>Game Type</TableHead>
                 <TableHead>League Type</TableHead>
-                <TableHead>Team Details</TableHead>
+                <TableHead>Schedule</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
@@ -74,13 +111,8 @@ const LeagueFinder = () => {
                   <TableCell>{league.location}</TableCell>
                   <TableCell>{league.gameType}</TableCell>
                   <TableCell className="capitalize">{league.type}</TableCell>
-                  <TableCell>
-                    {league.type === 'team' && (
-                      <span className="text-sm text-muted-foreground">
-                        {league.maxPlayersPerTeam} players per team, {league.playersPerNight} playing per night
-                      </span>
-                    )}
-                  </TableCell>
+                  <TableCell>{getScheduleDescription(league)}</TableCell>
+                  <TableCell>{getLeagueStatus(league.schedule)}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm">
                       Join League
@@ -90,7 +122,7 @@ const LeagueFinder = () => {
               ))}
               {sortedLeagues.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-6">
+                  <TableCell colSpan={7} className="text-center py-6">
                     No leagues found. Try a different search term or create a new league.
                   </TableCell>
                 </TableRow>

@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { League } from "../types/league";
+import { League, LeagueSession } from "../types/league";
 import {
   Select,
   SelectContent,
@@ -12,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { LeagueScheduler } from "./LeagueScheduler";
 
 interface CreateLeagueFormProps {
   onCreateLeague: (league: League) => void;
@@ -27,12 +27,22 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
   const [playersPerNight, setPlayersPerNight] = useState("");
   const [gameType, setGameType] = useState("8-ball");
   const [customGameType, setCustomGameType] = useState("");
+  const [sessions, setSessions] = useState<LeagueSession[]>([]);
   const { toast } = useToast();
 
   const handleCreateLeague = (e: React.FormEvent) => {
     e.preventDefault();
     const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
     const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+    
+    if (sessions.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please schedule at least one session for the league.",
+      });
+      return;
+    }
     
     const isDuplicate = existingLeagues.some(
       (league: League) => league.name.toLowerCase() === leagueName.toLowerCase()
@@ -82,6 +92,7 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
       teams: [],
       type: leagueType,
       gameType: finalGameType,
+      schedule: sessions,
       ...(leagueType === "team" && {
         maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
         playersPerNight: parseInt(playersPerNight),
@@ -97,6 +108,7 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
     setPlayersPerNight("");
     setGameType("8-ball");
     setCustomGameType("");
+    setSessions([]);
     onComplete();
 
     toast({
@@ -206,6 +218,14 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
           value={leaguePassword}
           onChange={(e) => setLeaguePassword(e.target.value)}
           required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>League Schedule</Label>
+        <LeagueScheduler
+          sessions={sessions}
+          onSessionsChange={setSessions}
         />
       </div>
 
