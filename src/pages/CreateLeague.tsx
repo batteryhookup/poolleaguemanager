@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { categorizeLeague } from "@/hooks/useUserData";
 import { League } from "@/components/account/types/league";
 import {
   Dialog,
@@ -38,11 +37,6 @@ const CreateLeague = () => {
       navigate("/");
     }
   }, [navigate, toast]);
-
-  const handleDialogClose = () => {
-    setShowExplanationDialog(false);
-    navigate("/account");
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,15 +95,26 @@ const CreateLeague = () => {
       existingLeagues.push(newLeague);
       localStorage.setItem("leagues", JSON.stringify(existingLeagues));
       
-      window.dispatchEvent(new Event('leagueUpdate'));
-
-      setIsLoading(false); // Set loading to false before showing dialog
-      setShowExplanationDialog(true); // Show the dialog
-      
+      // First show success message
       toast({
         title: "Success",
         description: "League created successfully!",
       });
+
+      // Then update the loading state
+      setIsLoading(false);
+
+      // Force a sync of localStorage across tabs
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'leagues',
+        newValue: JSON.stringify(existingLeagues)
+      }));
+
+      // Finally, trigger the league update event
+      window.dispatchEvent(new Event('leagueUpdate'));
+
+      // Show explanation dialog which will handle navigation when closed
+      setShowExplanationDialog(true);
     } catch (error) {
       console.error("Error creating league:", error);
       toast({
@@ -187,7 +192,17 @@ const CreateLeague = () => {
           </Button>
         </form>
 
-        <Dialog open={showExplanationDialog} onOpenChange={setShowExplanationDialog}>
+        {/* Use controlled Dialog with explicit open state */}
+        <Dialog 
+          open={showExplanationDialog} 
+          onOpenChange={(open) => {
+            setShowExplanationDialog(open);
+            if (!open) {
+              // Only navigate when dialog is actually closing
+              navigate("/account");
+            }
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>League Successfully Created!</DialogTitle>
@@ -206,7 +221,10 @@ const CreateLeague = () => {
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button onClick={handleDialogClose}>OK</Button>
+              <Button onClick={() => {
+                setShowExplanationDialog(false);
+                navigate("/account");
+              }}>OK</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
