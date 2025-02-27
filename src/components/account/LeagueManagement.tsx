@@ -2,14 +2,18 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy } from "lucide-react";
+import { Trophy, Archive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CreateLeagueForm } from "./league/CreateLeagueForm";
 import { LeagueList } from "./league/LeagueList";
 import { LeagueDialogs } from "./league/LeagueDialogs";
-import { League, LeagueManagementProps, Team } from "./types/league";
+import { League, LeagueManagementProps } from "./types/league";
 
-export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps) {
+export interface ExtendedLeagueManagementProps extends LeagueManagementProps {
+  archivedLeagues: League[];
+}
+
+export function LeagueManagement({ leagues, setLeagues, archivedLeagues }: ExtendedLeagueManagementProps) {
   const [activeTab, setActiveTab] = useState("my-leagues");
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -37,9 +41,10 @@ export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps)
       return;
     }
 
-    const updatedLeagues = leagues.filter(league => league.id !== selectedLeague.id);
+    const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+    const updatedLeagues = existingLeagues.filter((league: League) => league.id !== selectedLeague.id);
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-    setLeagues(updatedLeagues);
+    setLeagues(leagues => leagues.filter(league => league.id !== selectedLeague.id));
     setSelectedLeague(null);
     setIsDeleteDialogOpen(false);
 
@@ -50,72 +55,14 @@ export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps)
   };
 
   const handleUpdateLeague = (updatedLeague: League) => {
-    const updatedLeagues = leagues.map(league =>
+    const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+    const updatedLeagues = existingLeagues.map((league: League) =>
       league.id === updatedLeague.id ? updatedLeague : league
     );
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-    setLeagues(updatedLeagues);
-  };
-
-  const handleAddTeam = (teamName: string) => {
-    if (!selectedLeague || !teamName.trim()) return;
-
-    const newTeam: Team = {
-      id: Date.now(),
-      name: teamName.trim(),
-    };
-
-    const updatedLeagues = leagues.map(league => {
-      if (league.id === selectedLeague.id) {
-        return {
-          ...league,
-          teams: [...(league.teams || []), newTeam],
-        };
-      }
-      return league;
-    });
-
-    setLeagues(updatedLeagues);
-    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-    setIsAddTeamDialogOpen(false);
-
-    toast({
-      title: "Success",
-      description: "Team added successfully!",
-    });
-  };
-
-  const handleDeleteTeam = (password: string) => {
-    if (!selectedLeague || !selectedTeam) return;
-
-    if (password !== selectedLeague.password) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Incorrect league password.",
-      });
-      return;
-    }
-
-    const updatedLeagues = leagues.map(league => {
-      if (league.id === selectedLeague.id) {
-        return {
-          ...league,
-          teams: league.teams.filter(team => team.id !== selectedTeam.id),
-        };
-      }
-      return league;
-    });
-
-    setLeagues(updatedLeagues);
-    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-    setSelectedTeam(null);
-    setIsDeleteTeamDialogOpen(false);
-
-    toast({
-      title: "Success",
-      description: "Team deleted successfully!",
-    });
+    setLeagues(prevLeagues => prevLeagues.map(league =>
+      league.id === updatedLeague.id ? updatedLeague : league
+    ));
   };
 
   return (
@@ -123,13 +70,14 @@ export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps)
       <CardHeader className="flex flex-row items-center gap-4">
         <Trophy className="w-8 h-8 text-emerald-600" />
         <div>
-          <CardTitle>My Leagues</CardTitle>
+          <CardTitle>Leagues</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="my-leagues">My Leagues</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="my-leagues">Active Leagues</TabsTrigger>
+            <TabsTrigger value="archives">Archives</TabsTrigger>
             <TabsTrigger value="create">Create League</TabsTrigger>
           </TabsList>
           <TabsContent value="my-leagues">
@@ -153,6 +101,36 @@ export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps)
                 }}
                 onUpdateLeague={handleUpdateLeague}
               />
+            )}
+          </TabsContent>
+          <TabsContent value="archives">
+            {archivedLeagues.length === 0 ? (
+              <p className="text-muted-foreground">No archived leagues found.</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Archive className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Leagues are automatically archived after their last session date.</p>
+                </div>
+                <LeagueList
+                  leagues={archivedLeagues}
+                  onDeleteLeague={(league) => {
+                    setSelectedLeague(league);
+                    setIsDeleteDialogOpen(true);
+                  }}
+                  onAddTeam={(league) => {
+                    setSelectedLeague(league);
+                    setIsAddTeamDialogOpen(true);
+                  }}
+                  onDeleteTeam={(league, team) => {
+                    setSelectedLeague(league);
+                    setSelectedTeam(team);
+                    setIsDeleteTeamDialogOpen(true);
+                  }}
+                  onUpdateLeague={handleUpdateLeague}
+                  isArchived
+                />
+              </div>
             )}
           </TabsContent>
           <TabsContent value="create">
@@ -180,4 +158,3 @@ export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps)
     </Card>
   );
 }
-

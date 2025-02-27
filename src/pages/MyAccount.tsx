@@ -8,9 +8,11 @@ import { StatsManagement } from "@/components/account/StatsManagement";
 import { AccountActions } from "@/components/account/AccountActions";
 import { League } from "@/components/account/types/league";
 import { Team } from "@/components/account/types/team";
+import { isPast, parseISO } from "date-fns";
 
 const MyAccount = () => {
-  const [leagues, setLeagues] = useState<League[]>([]);
+  const [activeLeagues, setActiveLeagues] = useState<League[]>([]);
+  const [archivedLeagues, setArchivedLeagues] = useState<League[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [username, setUsername] = useState("");
   const navigate = useNavigate();
@@ -25,7 +27,7 @@ const MyAccount = () => {
     const userData = JSON.parse(currentUser);
     setUsername(userData.username);
 
-    // Filter leagues
+    // Filter leagues and separate active from archived
     const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     const userLeagues = allLeagues.filter(
       (league: League) => league.createdBy === userData.username
@@ -34,9 +36,28 @@ const MyAccount = () => {
       teams: league.teams || [],
       type: league.type || 'singles',
     }));
-    setLeagues(userLeagues);
 
-    // Filter teams - only show teams where the user is either the creator or a member
+    // Separate active and archived leagues
+    const { active, archived } = userLeagues.reduce(
+      (acc: { active: League[]; archived: League[] }, league: League) => {
+        const lastSession = league.schedule?.length > 0 
+          ? parseISO(league.schedule[league.schedule.length - 1].date)
+          : null;
+
+        if (lastSession && isPast(lastSession)) {
+          acc.archived.push(league);
+        } else {
+          acc.active.push(league);
+        }
+        return acc;
+      },
+      { active: [], archived: [] }
+    );
+
+    setActiveLeagues(active);
+    setArchivedLeagues(archived);
+
+    // Filter teams
     const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
     const userTeams = allTeams.filter((team: Team) => 
       team.createdBy === userData.username || team.members.includes(userData.username)
@@ -51,7 +72,11 @@ const MyAccount = () => {
         
         <div className="grid gap-8">
           <section>
-            <LeagueManagement leagues={leagues} setLeagues={setLeagues} />
+            <LeagueManagement 
+              leagues={activeLeagues} 
+              setLeagues={setActiveLeagues} 
+              archivedLeagues={archivedLeagues}
+            />
           </section>
 
           <section>
