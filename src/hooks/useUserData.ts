@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "./use-toast";
@@ -37,12 +38,11 @@ export const useUserData = () => {
         (acc: { active: League[]; upcoming: League[]; archived: League[] }, league: League) => {
           console.log(`Processing league: ${league.name}, created by: ${league.createdBy}`);
           
-          const firstSession = league.schedule?.length > 0
-            ? parseISO(league.schedule[0].date)
-            : null;
+          const firstSession = league.schedule?.[0]?.date ? parseISO(league.schedule[0].date) : null;
           const lastSession = league.schedule?.length > 0 
             ? parseISO(league.schedule[league.schedule.length - 1].date)
             : null;
+          const now = new Date();
           
           // Check if user is creator or member of any team in the league
           const isUserLeague = league.createdBy === userData.username;
@@ -51,22 +51,28 @@ export const useUserData = () => {
           );
 
           console.log(`League ${league.name} - User is creator: ${isUserLeague}, User is member: ${isUserMember}`);
+          console.log(`League ${league.name} - First session: ${firstSession}, Last session: ${lastSession}`);
 
           // Only process leagues where user is creator or member
           if (isUserLeague || isUserMember) {
             // If the league has ended (last session is in the past)
             if (lastSession && isPast(lastSession)) {
-              console.log(`Adding ${league.name} to archived`);
+              console.log(`${league.name}: Last session ${lastSession.toISOString()} is in the past - adding to archived`);
               acc.archived.push(league);
             }
             // If the league hasn't started yet (first session is in the future)
             else if (firstSession && isFuture(firstSession)) {
-              console.log(`Adding ${league.name} to upcoming`);
+              console.log(`${league.name}: First session ${firstSession.toISOString()} is in the future - adding to upcoming`);
               acc.upcoming.push(league);
             }
-            // If the league has started but not ended, or has no schedule
+            // If the league is currently active (started but not ended)
+            else if (firstSession && lastSession && firstSession <= now && now <= lastSession) {
+              console.log(`${league.name}: League is currently active - adding to active`);
+              acc.active.push(league);
+            }
+            // Default case (no schedule or invalid dates)
             else {
-              console.log(`Adding ${league.name} to active`);
+              console.log(`${league.name}: No valid schedule found - adding to active`);
               acc.active.push(league);
             }
           } else {
@@ -123,3 +129,4 @@ export const useUserData = () => {
     setTeams,
   };
 };
+
