@@ -6,9 +6,10 @@ import { StatsManagement } from "@/components/account/StatsManagement";
 import { AccountActions } from "@/components/account/AccountActions";
 import { useUserData } from "@/hooks/useUserData";
 import { useEffect } from "react";
-import { initializeTestData } from "@/utils/testDataInit";
+import { useNavigate } from "react-router-dom";
 
 const MyAccount = () => {
+  const navigate = useNavigate();
   const {
     activeLeagues,
     upcomingLeagues,
@@ -19,10 +20,13 @@ const MyAccount = () => {
     setTeams,
   } = useUserData();
 
-  // Initialize test data on component mount
   useEffect(() => {
-    initializeTestData();
-  }, []);
+    const currentUser = localStorage.getItem("currentUser");
+    if (!currentUser) {
+      navigate("/");
+      return;
+    }
+  }, [navigate]);
 
   return (
     <Layout>
@@ -57,4 +61,3 @@ const MyAccount = () => {
 };
 
 export default MyAccount;
-

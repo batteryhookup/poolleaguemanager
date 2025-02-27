@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserCircle2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { initializeTestData } from "@/utils/testDataInit";
 
 interface User {
   username: string;
@@ -25,10 +26,10 @@ export const AuthForm = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Clear all localStorage data when component mounts
-  useState(() => {
-    localStorage.clear();
-  });
+  // Initialize clean slate when component mounts
+  useEffect(() => {
+    initializeTestData();
+  }, []);
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
