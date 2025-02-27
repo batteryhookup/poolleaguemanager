@@ -2,7 +2,7 @@ import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Trophy, Users2, LineChart, Trash2 } from "lucide-react";
+import { Trophy, Users2, LineChart, Trash2, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,11 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+interface Team {
+  id: number;
+  name: string;
+}
+
 interface League {
   id: number;
   name: string;
@@ -24,6 +29,7 @@ interface League {
   createdAt: string;
   createdBy: string;
   password: string;
+  teams: Team[];
 }
 
 const MyAccount = () => {
@@ -37,6 +43,9 @@ const MyAccount = () => {
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
   const [deleteLeaguePassword, setDeleteLeaguePassword] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isAddTeamDialogOpen, setIsAddTeamDialogOpen] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [expandedLeagues, setExpandedLeagues] = useState<number[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -50,7 +59,10 @@ const MyAccount = () => {
     const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     const userLeagues = allLeagues.filter(
       (league: League) => league.createdBy === JSON.parse(currentUser).username
-    );
+    ).map((league: League) => ({
+      ...league,
+      teams: league.teams || []
+    }));
     setLeagues(userLeagues);
   }, [navigate]);
 
@@ -79,6 +91,7 @@ const MyAccount = () => {
       password: leaguePassword,
       createdAt: new Date().toISOString(),
       createdBy: currentUser.username,
+      teams: [],
     };
 
     const updatedLeagues = [...existingLeagues, newLeague];
@@ -95,6 +108,43 @@ const MyAccount = () => {
       title: "Success",
       description: "League created successfully!",
     });
+  };
+
+  const handleAddTeam = () => {
+    if (!selectedLeague || !newTeamName.trim()) return;
+
+    const newTeam = {
+      id: Date.now(),
+      name: newTeamName.trim(),
+    };
+
+    const updatedLeagues = leagues.map(league => {
+      if (league.id === selectedLeague.id) {
+        return {
+          ...league,
+          teams: [...(league.teams || []), newTeam],
+        };
+      }
+      return league;
+    });
+
+    setLeagues(updatedLeagues);
+    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+
+    setNewTeamName("");
+    setIsAddTeamDialogOpen(false);
+    toast({
+      title: "Success",
+      description: "Team added successfully!",
+    });
+  };
+
+  const toggleLeagueExpansion = (leagueId: number) => {
+    setExpandedLeagues(prev => 
+      prev.includes(leagueId) 
+        ? prev.filter(id => id !== leagueId)
+        : [...prev, leagueId]
+    );
   };
 
   const handleDeleteLeague = () => {
@@ -205,17 +255,56 @@ const MyAccount = () => {
                                 <CardTitle className="text-lg">{league.name}</CardTitle>
                                 <p className="text-sm text-muted-foreground">{league.location}</p>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  setSelectedLeague(league);
-                                  setIsDeleteDialogOpen(true);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => {
+                                    setSelectedLeague(league);
+                                    setIsAddTeamDialogOpen(true);
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setSelectedLeague(league);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
                             </CardHeader>
+                            {league.teams && league.teams.length > 0 && (
+                              <CardContent>
+                                <div className="space-y-2">
+                                  <Button
+                                    variant="ghost"
+                                    className="w-full flex justify-between"
+                                    onClick={() => toggleLeagueExpansion(league.id)}
+                                  >
+                                    Teams
+                                    {expandedLeagues.includes(league.id) ? (
+                                      <ChevronUp className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                  {expandedLeagues.includes(league.id) && (
+                                    <ul className="space-y-2 pl-4">
+                                      {league.teams.map(team => (
+                                        <li key={team.id} className="text-sm">
+                                          {team.name}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              </CardContent>
+                            )}
                           </Card>
                         ))}
                       </div>
@@ -386,6 +475,34 @@ const MyAccount = () => {
               className="w-full"
             >
               Delete League
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddTeamDialogOpen} onOpenChange={setIsAddTeamDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Team</DialogTitle>
+            <DialogDescription>
+              Add a new team to {selectedLeague?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="teamName">Team Name</Label>
+              <Input
+                id="teamName"
+                placeholder="Enter team name"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+              />
+            </div>
+            <Button
+              onClick={handleAddTeam}
+              className="w-full"
+            >
+              Add Team
             </Button>
           </div>
         </DialogContent>
