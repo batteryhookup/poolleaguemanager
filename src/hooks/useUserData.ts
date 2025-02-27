@@ -11,8 +11,18 @@ export const categorizeLeague = (league: League, username: string, now: Date = n
     return 'active';
   }
 
-  const firstSession = parseISO(`${league.schedule[0].date}T${league.schedule[0].startTime}`);
-  const lastSession = parseISO(`${league.schedule[league.schedule.length - 1].date}T${league.schedule[league.schedule.length - 1].endTime}`);
+  // Create Date objects that combine the date and time in the local timezone
+  const firstSession = new Date(`${league.schedule[0].date}T${league.schedule[0].startTime}`);
+  const lastSession = new Date(`${league.schedule[league.schedule.length - 1].date}T${league.schedule[league.schedule.length - 1].endTime}`);
+
+  console.log('Categorizing league:', {
+    leagueName: league.name,
+    firstSession: firstSession.toISOString(),
+    lastSession: lastSession.toISOString(),
+    now: now.toISOString(),
+    isAfterLast: isAfter(now, lastSession),
+    isBeforeFirst: isAfter(firstSession, now)
+  });
 
   if (isAfter(now, lastSession)) {
     return 'archived';
@@ -121,9 +131,13 @@ export const useUserData = () => {
         const { league, category, action } = event.detail;
         console.log(`League update: ${action}, Category: ${category}`, league);
         
+        // Re-categorize the league here to ensure correct placement
+        const currentCategory = categorizeLeague(league, username);
+        console.log(`Recategorized as: ${currentCategory}`);
+        
         if (action === 'create') {
-          // Immediately update the appropriate category
-          switch (category) {
+          // Use the recategorized category instead of the one from the event
+          switch (currentCategory) {
             case 'active':
               setActiveLeagues(prev => [...prev, league]);
               break;
@@ -149,7 +163,7 @@ export const useUserData = () => {
       window.removeEventListener('leagueUpdate', handleLeagueUpdate);
       window.removeEventListener('storage', handleLeagueUpdate);
     };
-  }, [navigate]);
+  }, [navigate, username]);
 
   return {
     activeLeagues,
