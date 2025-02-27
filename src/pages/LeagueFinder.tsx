@@ -13,38 +13,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { League } from "@/components/account/types/league";
-import { format, parseISO } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Team } from "@/components/account/types/team";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { JoinLeagueDialog } from "@/components/league/JoinLeagueDialog";
+import { LeagueStatusBadge } from "@/components/league/LeagueStatusBadge";
+import { LeagueScheduleDisplay } from "@/components/league/LeagueScheduleDisplay";
 
 const LeagueFinder = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
-  const [joinType, setJoinType] = useState<"player" | "team">("player");
-  const [selectedTeam, setSelectedTeam] = useState<string>("");
   const [userTeams, setUserTeams] = useState<Team[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Add interval to check for league updates
   useEffect(() => {
     const loadData = () => {
       const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
@@ -61,13 +45,8 @@ const LeagueFinder = () => {
       }
     };
 
-    // Load data immediately
     loadData();
-
-    // Set up interval to refresh data
     const intervalId = setInterval(loadData, 1000);
-
-    // Cleanup interval on unmount
     return () => clearInterval(intervalId);
   }, []);
 
@@ -86,7 +65,7 @@ const LeagueFinder = () => {
     setIsJoinDialogOpen(true);
   };
 
-  const handleJoinRequest = () => {
+  const handleJoinRequest = (joinType: "player" | "team", teamId?: string) => {
     if (!selectedLeague) return;
 
     const currentUser = localStorage.getItem("currentUser");
@@ -95,7 +74,7 @@ const LeagueFinder = () => {
     const username = JSON.parse(currentUser).username;
     const existingRequests = JSON.parse(localStorage.getItem("leagueRequests") || "[]");
     
-    if (joinType === "team" && !selectedTeam) {
+    if (joinType === "team" && !teamId) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -109,7 +88,7 @@ const LeagueFinder = () => {
       leagueId: selectedLeague.id,
       requestType: joinType,
       username,
-      teamId: joinType === "team" ? selectedTeam : null,
+      teamId: joinType === "team" ? teamId : null,
       status: "pending",
       timestamp: new Date().toISOString(),
     };
@@ -118,47 +97,11 @@ const LeagueFinder = () => {
     
     setIsJoinDialogOpen(false);
     setSelectedLeague(null);
-    setJoinType("player");
-    setSelectedTeam("");
 
     toast({
       title: "Request Sent",
       description: "Your request to join the league has been sent to the league owner.",
     });
-  };
-
-  const getLeagueStatus = (league: League) => {
-    if (!league.schedule || league.schedule.length === 0) return null;
-
-    const now = new Date();
-    const firstSession = parseISO(`${league.schedule[0].date}T${league.schedule[0].startTime}`);
-    const lastSession = parseISO(`${league.schedule[league.schedule.length - 1].date}T${league.schedule[league.schedule.length - 1].endTime}`);
-
-    if (now > lastSession) {
-      return <Badge variant="secondary">Ended</Badge>;
-    } else if (now < firstSession) {
-      return <Badge variant="default">Upcoming</Badge>;
-    } else {
-      return <Badge variant="default" className="bg-green-500">Ongoing</Badge>;
-    }
-  };
-
-  const getScheduleDescription = (league: League) => {
-    if (!league.schedule || league.schedule.length === 0) return "No schedule available";
-
-    const firstSession = parseISO(`${league.schedule[0].date}T${league.schedule[0].startTime}`);
-    const lastSession = parseISO(`${league.schedule[league.schedule.length - 1].date}T${league.schedule[league.schedule.length - 1].endTime}`);
-    const dayOfWeek = format(firstSession, "EEEE");
-    const timeOfDay = parseInt(league.schedule[0].startTime.split(":")[0]) < 17 ? "afternoons" : "nights";
-    
-    const dateRange = `${format(firstSession, "MMM d, yyyy")} - ${format(lastSession, "MMM d, yyyy")}`;
-    
-    if (firstSession > new Date()) {
-      const startingIn = format(firstSession, "'Starting' MMM d, yyyy");
-      return `${dayOfWeek} ${timeOfDay}, ${startingIn}`;
-    }
-
-    return `${dayOfWeek} ${timeOfDay}, ${dateRange}`;
   };
 
   const filteredLeagues = leagues.filter(
@@ -213,8 +156,12 @@ const LeagueFinder = () => {
                   <TableCell>{league.location}</TableCell>
                   <TableCell>{league.gameType}</TableCell>
                   <TableCell className="capitalize">{league.type}</TableCell>
-                  <TableCell>{getScheduleDescription(league)}</TableCell>
-                  <TableCell>{getLeagueStatus(league)}</TableCell>
+                  <TableCell>
+                    <LeagueScheduleDisplay league={league} />
+                  </TableCell>
+                  <TableCell>
+                    <LeagueStatusBadge league={league} />
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button
                       variant="outline"
@@ -238,73 +185,13 @@ const LeagueFinder = () => {
         </div>
       </div>
 
-      <Dialog open={isJoinDialogOpen} onOpenChange={setIsJoinDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Join League</DialogTitle>
-            <DialogDescription>
-              Choose how you would like to join {selectedLeague?.name}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <label>Join as:</label>
-              <Select
-                value={joinType}
-                onValueChange={(value: "player" | "team") => setJoinType(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select join type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="player">Individual Player</SelectItem>
-                  {userTeams.length > 0 && (
-                    <SelectItem value="team">Team</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {joinType === "team" && userTeams.length > 0 && (
-              <div className="space-y-2">
-                <label>Select Team:</label>
-                <Select value={selectedTeam} onValueChange={setSelectedTeam}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a team" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {userTeams.map((team) => (
-                      <SelectItem key={team.id} value={team.id.toString()}>
-                        {team.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="flex justify-end space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsJoinDialogOpen(false);
-                  setSelectedLeague(null);
-                  setJoinType("player");
-                  setSelectedTeam("");
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleJoinRequest}
-                disabled={joinType === "team" && !selectedTeam}
-              >
-                Send Request
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <JoinLeagueDialog
+        isOpen={isJoinDialogOpen}
+        onOpenChange={setIsJoinDialogOpen}
+        selectedLeague={selectedLeague}
+        userTeams={userTeams}
+        onJoinRequest={handleJoinRequest}
+      />
     </Layout>
   );
 };
