@@ -11,6 +11,7 @@ const CreateLeague = () => {
   const [leagueName, setLeagueName] = useState("");
   const [location, setLocation] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -29,6 +30,16 @@ const CreateLeague = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Passwords do not match.",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -122,6 +133,18 @@ const CreateLeague = () => {
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </div>
+
           <Button
             type="submit"
             className="w-full"
@@ -136,3 +159,4 @@ const CreateLeague = () => {
 };
 
 export default CreateLeague;
+

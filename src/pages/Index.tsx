@@ -19,6 +19,7 @@ interface User {
 const Index = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [isLogin, setIsLogin] = useState(true);
@@ -27,6 +28,16 @@ const Index = () => {
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isLogin && password !== confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Passwords do not match.",
+      });
+      return;
+    }
+
     const users = JSON.parse(localStorage.getItem("users") || "[]");
 
     if (isLogin) {
@@ -121,6 +132,16 @@ const Index = () => {
                   {!isLogin && (
                     <>
                       <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">Confirm Password</Label>
+                        <Input
+                          id="confirmPassword"
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
                         <Label htmlFor="phoneNumber">Phone Number</Label>
                         <Input
                           id="phoneNumber"
@@ -154,6 +175,8 @@ const Index = () => {
                   className="w-full mt-2"
                   onClick={() => {
                     setIsLogin(!isLogin);
+                    setPassword("");
+                    setConfirmPassword("");
                     if (!isLogin) {
                       setPhoneNumber("");
                       setZipCode("");
@@ -195,3 +218,4 @@ const Index = () => {
 };
 
 export default Index;
+
