@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Layout } from "@/components/Layout";
@@ -7,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface User {
   username: string;
@@ -47,11 +46,11 @@ const Index = () => {
       
       if (user) {
         localStorage.setItem("currentUser", JSON.stringify(user));
+        navigate("/account");
         toast({
           title: "Success",
           description: "Logged in successfully!",
         });
-        navigate("/account");
       } else {
         toast({
           variant: "destructive",
@@ -76,11 +75,11 @@ const Index = () => {
       localStorage.setItem("users", JSON.stringify(users));
       localStorage.setItem("currentUser", JSON.stringify(newUser));
       
+      navigate("/account");
       toast({
         title: "Success",
         description: "Account created successfully!",
       });
-      navigate("/account");
     }
   };
 
@@ -218,4 +217,3 @@ const Index = () => {
 };
 
 export default Index;
-
