@@ -62,7 +62,6 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
     );
     localStorage.setItem("teams", JSON.stringify(updatedTeams));
 
-    // Trigger storage event to refresh other tabs
     window.dispatchEvent(new Event("storage"));
 
     toast({
@@ -74,7 +73,6 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
   const onTransferCaptain = (newCaptain: string) => {
     if (!selectedTeam) return;
 
-    // Store the pending transfer in localStorage
     const pendingTransfers = JSON.parse(localStorage.getItem("pendingCaptainTransfers") || "[]");
     pendingTransfers.push({
       teamId: selectedTeam.id,
@@ -83,7 +81,6 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
     });
     localStorage.setItem("pendingCaptainTransfers", JSON.stringify(pendingTransfers));
 
-    // Create a notification for the new captain
     const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
     notifications.push({
       id: Date.now(),
@@ -97,8 +94,12 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
     setIsTransferOpen(false);
     setSelectedTeam(null);
 
-    // Trigger storage event to refresh other tabs
     window.dispatchEvent(new Event("storage"));
+  };
+
+  const handleAcceptCaptain = (team: Team) => {
+    setSelectedTeam(team);
+    setIsAcceptCaptainOpen(true);
   };
 
   const submitAcceptCaptain = () => {
@@ -113,7 +114,6 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
       return;
     }
 
-    // Update the team in localStorage
     const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
     const updatedTeams = allTeams.map((t: Team) => {
       if (t.id === selectedTeam.id) {
@@ -127,14 +127,12 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
     });
     localStorage.setItem("teams", JSON.stringify(updatedTeams));
 
-    // Remove the pending transfer
     const pendingTransfers = JSON.parse(localStorage.getItem("pendingCaptainTransfers") || "[]");
     const filteredTransfers = pendingTransfers.filter(
       (transfer: any) => transfer.teamId !== selectedTeam.id
     );
     localStorage.setItem("pendingCaptainTransfers", JSON.stringify(filteredTransfers));
 
-    // Create notifications for both users
     const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
     notifications.push({
       id: Date.now(),
@@ -155,7 +153,6 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
       description: "You are now the team captain.",
     });
 
-    // Trigger storage event to refresh other tabs
     window.dispatchEvent(new Event("storage"));
   };
 
