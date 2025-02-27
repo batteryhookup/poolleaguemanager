@@ -6,6 +6,7 @@ import { TeamList } from "./team/TeamList";
 import { Users } from "lucide-react";
 import { Team } from "./types/team";
 import { DeleteTeamDialog } from "./team/DeleteTeamDialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface TeamManagementProps {
   userTeams: Team[];
@@ -15,6 +16,8 @@ interface TeamManagementProps {
 export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const { toast } = useToast();
 
   const handleCreateTeam = (newTeam: Team) => {
     const existingTeams = JSON.parse(localStorage.getItem("teams") || "[]");
@@ -28,8 +31,17 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  const handleConfirmDelete = (password: string) => {
     if (!teamToDelete) return;
+
+    if (password !== teamToDelete.password) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Incorrect team password.",
+      });
+      return;
+    }
 
     const existingTeams = JSON.parse(localStorage.getItem("teams") || "[]");
     const updatedTeams = existingTeams.filter((t: Team) => t.id !== teamToDelete.id);
@@ -38,6 +50,12 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
     setUserTeams(userTeams.filter(t => t.id !== teamToDelete.id));
     setIsDeleteDialogOpen(false);
     setTeamToDelete(null);
+    setDeletePassword("");
+
+    toast({
+      title: "Success",
+      description: "Team deleted successfully.",
+    });
   };
 
   return (
@@ -49,14 +67,28 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <CreateTeamForm onCreateTeam={handleCreateTeam} />
+        <CreateTeamForm 
+          onCreateTeam={handleCreateTeam} 
+          onComplete={() => {
+            toast({
+              title: "Success",
+              description: "Team created successfully.",
+            });
+          }} 
+        />
         <TeamList teams={userTeams} onDeleteTeam={handleDeleteTeam} />
       </CardContent>
 
       <DeleteTeamDialog
         isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={confirmDelete}
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
+          setDeletePassword("");
+        }}
+        selectedTeam={teamToDelete}
+        onConfirmDelete={handleConfirmDelete}
+        deletePassword={deletePassword}
+        onDeletePasswordChange={setDeletePassword}
       />
     </Card>
   );
