@@ -25,7 +25,7 @@ interface League {
 
 interface LeagueManagementProps {
   leagues: League[];
-  setLeagues: (leagues: League[]) => void;
+  setLeagues: React.Dispatch<React.SetStateAction<League[]>>;
 }
 
 export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps) {
@@ -62,7 +62,7 @@ export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps)
       return;
     }
 
-    const newLeague = {
+    const newLeague: League = {
       id: Date.now(),
       name: leagueName,
       location: leagueLocation,
@@ -74,7 +74,7 @@ export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps)
 
     const updatedLeagues = [...existingLeagues, newLeague];
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-    setLeagues(prev => [...prev, newLeague]);
+    setLeagues(leagues => [...leagues, newLeague]);
 
     setLeagueName("");
     setLeagueLocation("");
@@ -119,7 +119,7 @@ export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps)
   const handleAddTeam = () => {
     if (!selectedLeague || !newTeamName.trim()) return;
 
-    const newTeam = {
+    const newTeam: Team = {
       id: Date.now(),
       name: newTeamName.trim(),
     };
