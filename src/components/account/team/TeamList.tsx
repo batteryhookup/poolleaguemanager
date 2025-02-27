@@ -31,7 +31,10 @@ interface TeamListProps {
 export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
   const [isEditTeamOpen, setIsEditTeamOpen] = useState(false);
   const [isAcceptCaptainOpen, setIsAcceptCaptainOpen] = useState(false);
+  const [isRemovePlayerDialogOpen, setIsRemovePlayerDialogOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [removePassword, setRemovePassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const { toast } = useToast();
@@ -57,7 +60,7 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
     });
   };
 
-  const handleRemovePlayer = (team: Team, playerToRemove: string) => {
+  const initiateRemovePlayer = (team: Team, playerToRemove: string) => {
     if (team.createdBy === playerToRemove) {
       toast({
         variant: "destructive",
@@ -67,12 +70,29 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
       return;
     }
 
+    setSelectedTeam(team);
+    setSelectedPlayer(playerToRemove);
+    setIsRemovePlayerDialogOpen(true);
+  };
+
+  const handleRemovePlayer = () => {
+    if (!selectedTeam || !selectedPlayer) return;
+
+    if (removePassword !== selectedTeam.password) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Incorrect team password.",
+      });
+      return;
+    }
+
     const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
     const updatedTeams = allTeams.map((t: Team) => {
-      if (t.id === team.id) {
+      if (t.id === selectedTeam.id) {
         return {
           ...t,
-          members: t.members.filter((member) => member !== playerToRemove),
+          members: t.members.filter((member) => member !== selectedPlayer),
         };
       }
       return t;
@@ -81,9 +101,14 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
 
     window.dispatchEvent(new Event("storage"));
 
+    setIsRemovePlayerDialogOpen(false);
+    setSelectedTeam(null);
+    setSelectedPlayer(null);
+    setRemovePassword("");
+
     toast({
       title: "Success",
-      description: `${playerToRemove} has been removed from the team.`,
+      description: `${selectedPlayer} has been removed from the team.`,
     });
   };
 
@@ -252,7 +277,7 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
                                     variant="ghost"
                                     size="icon"
                                     className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                                    onClick={() => handleRemovePlayer(team, member)}
+                                    onClick={() => initiateRemovePlayer(team, member)}
                                   >
                                     <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
                                   </Button>
@@ -365,6 +390,59 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
               </Button>
               <Button onClick={submitAcceptCaptain} disabled={!newPassword || !confirmPassword}>
                 Accept & Set Password
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog 
+        open={isRemovePlayerDialogOpen} 
+        onOpenChange={(open) => {
+          setIsRemovePlayerDialogOpen(open);
+          if (!open) {
+            setRemovePassword("");
+            setSelectedPlayer(null);
+            setSelectedTeam(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Player</DialogTitle>
+            <DialogDescription>
+              Please enter the team password to confirm removing {selectedPlayer} from {selectedTeam?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="removePassword">Team Password</Label>
+              <Input
+                id="removePassword"
+                type="password"
+                value={removePassword}
+                onChange={(e) => setRemovePassword(e.target.value)}
+                placeholder="Enter team password"
+              />
+            </div>
+            <div className="flex justify-end space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsRemovePlayerDialogOpen(false);
+                  setRemovePassword("");
+                  setSelectedPlayer(null);
+                  setSelectedTeam(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleRemovePlayer}
+                disabled={!removePassword}
+              >
+                Remove Player
               </Button>
             </div>
           </div>
