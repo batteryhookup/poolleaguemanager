@@ -1,230 +1,28 @@
 
 import { Layout } from "@/components/Layout";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { LeagueManagement } from "@/components/account/LeagueManagement";
 import { TeamManagement } from "@/components/account/TeamManagement";
 import { StatsManagement } from "@/components/account/StatsManagement";
 import { AccountActions } from "@/components/account/AccountActions";
-import { League } from "@/components/account/types/league";
-import { Team } from "@/components/account/types/team";
-import { isPast, parseISO, isFuture } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
+import { useUserData } from "@/hooks/useUserData";
+import { useEffect } from "react";
+import { initializeTestData } from "@/utils/testDataInit";
 
 const MyAccount = () => {
-  const [activeLeagues, setActiveLeagues] = useState<League[]>([]);
-  const [upcomingLeagues, setUpcomingLeagues] = useState<League[]>([]);
-  const [archivedLeagues, setArchivedLeagues] = useState<League[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [username, setUsername] = useState("");
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const {
+    activeLeagues,
+    upcomingLeagues,
+    archivedLeagues,
+    teams,
+    username,
+    setActiveLeagues,
+    setTeams,
+  } = useUserData();
 
-  // Reset function to clear existing data and set up fresh test data
+  // Initialize test data on component mount
   useEffect(() => {
-    // Clear all existing data
-    localStorage.clear();
-
-    // Set up test users
-    const users = [
-      { username: "user1", password: "test123" },
-      { username: "user2", password: "test123" }
-    ];
-    localStorage.setItem("users", JSON.stringify(users));
-    
-    // Set current user as user1
-    localStorage.setItem("currentUser", JSON.stringify(users[0]));
-
-    // Set up test leagues with proper dates
-    const today = new Date();
-    const futureDate = new Date();
-    futureDate.setDate(today.getDate() + 30);
-    const pastDate = new Date();
-    pastDate.setDate(today.getDate() - 30);
-
-    const testLeagues = [
-      {
-        id: 1,
-        name: "Active League 1",
-        location: "Location 1",
-        createdAt: today.toISOString(),
-        createdBy: "user1",
-        password: "league1",
-        teams: [],
-        type: "team",
-        gameType: "casual",
-        schedule: [
-          {
-            date: today.toISOString(),
-            startTime: "18:00",
-            endTime: "20:00"
-          }
-        ]
-      },
-      {
-        id: 2,
-        name: "Upcoming League 1",
-        location: "Location 2",
-        createdAt: today.toISOString(),
-        createdBy: "user2",
-        password: "league2",
-        teams: [],
-        type: "team",
-        gameType: "casual",
-        schedule: [
-          {
-            date: futureDate.toISOString(),
-            startTime: "18:00",
-            endTime: "20:00"
-          }
-        ]
-      },
-      {
-        id: 3,
-        name: "Archived League 1",
-        location: "Location 3",
-        createdAt: pastDate.toISOString(),
-        createdBy: "user1",
-        password: "league3",
-        teams: [],
-        type: "team",
-        gameType: "casual",
-        schedule: [
-          {
-            date: pastDate.toISOString(),
-            startTime: "18:00",
-            endTime: "20:00"
-          }
-        ]
-      }
-    ];
-    localStorage.setItem("leagues", JSON.stringify(testLeagues));
-
-    // Set up test teams
-    const testTeams = [
-      {
-        id: 1,
-        name: "Team 1",
-        password: "team1",
-        createdAt: today.toISOString(),
-        createdBy: "user1",
-        members: ["user1", "user2"]
-      },
-      {
-        id: 2,
-        name: "Team 2",
-        password: "team2",
-        createdAt: today.toISOString(),
-        createdBy: "user2",
-        members: ["user2", "user1"]
-      }
-    ];
-    localStorage.setItem("teams", JSON.stringify(testTeams));
-
-    toast({
-      title: "Test Data Initialized",
-      description: "Fresh test data has been set up. You can now switch between user1 and user2 (password: test123)",
-    });
-  }, []); // Run once on component mount
-
-  const loadUserData = () => {
-    console.log("Loading user data...");
-    const currentUser = localStorage.getItem("currentUser");
-    if (!currentUser) {
-      console.log("No current user found, redirecting to home");
-      navigate("/");
-      return;
-    }
-
-    try {
-      const userData = JSON.parse(currentUser);
-      setUsername(userData.username);
-      console.log("Current user:", userData.username);
-
-      // Get all leagues from localStorage
-      const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-      console.log("All leagues from localStorage:", allLeagues);
-      
-      // Process all leagues
-      const { active, upcoming, archived } = allLeagues.reduce(
-        (acc: { active: League[]; upcoming: League[]; archived: League[] }, league: League) => {
-          console.log(`Processing league: ${league.name}, created by: ${league.createdBy}`);
-          
-          const firstSession = league.schedule?.length > 0
-            ? parseISO(league.schedule[0].date)
-            : null;
-          const lastSession = league.schedule?.length > 0 
-            ? parseISO(league.schedule[league.schedule.length - 1].date)
-            : null;
-          
-          // Check if user is creator or member of any team in the league
-          const isUserLeague = league.createdBy === userData.username;
-          const isUserMember = league.teams?.some((team: Team) => 
-            team.members?.includes(userData.username)
-          );
-
-          console.log(`League ${league.name} - User is creator: ${isUserLeague}, User is member: ${isUserMember}`);
-
-          // Only process leagues where user is creator or member
-          if (isUserLeague || isUserMember) {
-            // If the league has ended (last session is in the past)
-            if (lastSession && isPast(lastSession)) {
-              console.log(`Adding ${league.name} to archived`);
-              acc.archived.push(league);
-            }
-            // If the league hasn't started yet (first session is in the future)
-            else if (firstSession && isFuture(firstSession)) {
-              console.log(`Adding ${league.name} to upcoming`);
-              acc.upcoming.push(league);
-            }
-            // If the league has started but not ended, or has no schedule
-            else {
-              console.log(`Adding ${league.name} to active`);
-              acc.active.push(league);
-            }
-          } else {
-            console.log(`Skipping league ${league.name} - user not involved`);
-          }
-          
-          return acc;
-        },
-        { active: [], upcoming: [], archived: [] }
-      );
-
-      console.log("Categorized leagues:", {
-        active: active.length,
-        upcoming: upcoming.length,
-        archived: archived.length
-      });
-
-      setActiveLeagues(active);
-      setUpcomingLeagues(upcoming);
-      setArchivedLeagues(archived);
-
-      // Filter teams - keep showing all teams where user is creator or member
-      const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
-      console.log("All teams from localStorage:", allTeams);
-      
-      const userTeams = allTeams.filter((team: Team) => 
-        team.createdBy === userData.username || team.members.includes(userData.username)
-      );
-      console.log("Filtered user teams:", userTeams);
-      
-      setTeams(userTeams);
-    } catch (error) {
-      console.error("Error loading user data:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load your leagues and teams. Please try logging in again.",
-      });
-      navigate("/");
-    }
-  };
-
-  useEffect(() => {
-    loadUserData();
-  }, [navigate]);
+    initializeTestData();
+  }, []);
 
   return (
     <Layout>
@@ -259,3 +57,4 @@ const MyAccount = () => {
 };
 
 export default MyAccount;
+
