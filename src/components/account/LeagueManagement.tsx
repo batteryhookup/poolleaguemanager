@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, Archive, Clock } from "lucide-react";
+import { Trophy, Archive, CalendarClock } from "lucide-react";
 import { CreateLeagueForm } from "./league/CreateLeagueForm";
 import { LeagueList } from "./league/LeagueList";
 import { LeagueDialogs } from "./league/LeagueDialogs";
@@ -17,13 +17,13 @@ import {
 } from "./league/LeagueOperations";
 
 export interface ExtendedLeagueManagementProps extends LeagueManagementProps {
-  pendingLeagues: League[];
+  upcomingLeagues: League[];
   archivedLeagues: League[];
 }
 
 export function LeagueManagement({
   leagues,
-  pendingLeagues,
+  upcomingLeagues,
   setLeagues,
   archivedLeagues
 }: ExtendedLeagueManagementProps) {
@@ -77,7 +77,7 @@ export function LeagueManagement({
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="my-leagues">Active</TabsTrigger>
-            <TabsTrigger value="pending">Pending</TabsTrigger>
+            <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
             <TabsTrigger value="archives">Archives</TabsTrigger>
             <TabsTrigger value="create">Create League</TabsTrigger>
           </TabsList>
@@ -104,15 +104,15 @@ export function LeagueManagement({
               />
             )}
           </TabsContent>
-          <TabsContent value="pending">
-            {pendingLeagues.length === 0 ? (
+          <TabsContent value="upcoming">
+            {upcomingLeagues.length === 0 ? (
               <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <p>No pending leagues found.</p>
+                <CalendarClock className="w-4 h-4" />
+                <p>No upcoming leagues found.</p>
               </div>
             ) : (
               <LeagueList
-                leagues={pendingLeagues}
+                leagues={upcomingLeagues}
                 onDeleteLeague={(league) => {
                   setSelectedLeague(league);
                   setIsDeleteDialogOpen(true);
@@ -133,7 +133,7 @@ export function LeagueManagement({
           <TabsContent value="archives">
             {archivedLeagues.length === 0 ? (
               <div className="flex items-center gap-2 text-muted-foreground">
-                <Archive className="w-4 h-4" />
+                <Archive className="w-4 w-4" />
                 <p>No archived leagues found.</p>
               </div>
             ) : (

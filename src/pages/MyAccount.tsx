@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/Layout";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const MyAccount = () => {
   const [activeLeagues, setActiveLeagues] = useState<League[]>([]);
-  const [pendingLeagues, setPendingLeagues] = useState<League[]>([]);
+  const [upcomingLeagues, setUpcomingLeagues] = useState<League[]>([]);
   const [archivedLeagues, setArchivedLeagues] = useState<League[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [username, setUsername] = useState("");
@@ -33,35 +34,35 @@ const MyAccount = () => {
       // Get all leagues from localStorage
       const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
       
-      // Only get leagues where the user is the creator
-      const userLeagues = allLeagues
-        .filter((league: League) => league.createdBy === userData.username)
-        .map((league: League) => ({
-          ...league,
-          teams: league.teams || [],
-          type: league.type || 'singles',
-        }));
-
-      // Separate active and archived leagues (only for leagues user created)
-      const { active, archived } = userLeagues.reduce(
-        (acc: { active: League[]; archived: League[] }, league: League) => {
+      // Process all leagues
+      const { active, upcoming, archived } = allLeagues.reduce(
+        (acc: { active: League[]; upcoming: League[]; archived: League[] }, league: League) => {
           const lastSession = league.schedule?.length > 0 
             ? parseISO(league.schedule[league.schedule.length - 1].date)
             : null;
+          
+          const isUserLeague = league.createdBy === userData.username;
+          const isUserMember = league.teams?.some((team: Team) => 
+            team.members?.includes(userData.username)
+          );
 
           if (lastSession && isPast(lastSession)) {
-            acc.archived.push(league);
-          } else {
+            if (isUserLeague) {
+              acc.archived.push(league);
+            }
+          } else if (isUserLeague) {
             acc.active.push(league);
+          } else if (isUserMember) {
+            acc.upcoming.push(league);
           }
           
           return acc;
         },
-        { active: [], archived: [] }
+        { active: [], upcoming: [], archived: [] }
       );
 
       setActiveLeagues(active);
-      setPendingLeagues([]); // No pending leagues since we only show created leagues
+      setUpcomingLeagues(upcoming);
       setArchivedLeagues(archived);
 
       // Filter teams - keep showing all teams where user is creator or member
@@ -94,7 +95,7 @@ const MyAccount = () => {
           <section>
             <LeagueManagement 
               leagues={activeLeagues}
-              pendingLeagues={[]} // No pending leagues in My Account
+              upcomingLeagues={upcomingLeagues}
               archivedLeagues={archivedLeagues} 
               setLeagues={setActiveLeagues}
             />
