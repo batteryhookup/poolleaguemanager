@@ -33,49 +33,35 @@ const MyAccount = () => {
       // Get all leagues from localStorage
       const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
       
-      // Get all leagues where the user is a creator or team member
-      const userLeagues = allLeagues.map((league: League) => ({
-        ...league,
-        teams: league.teams || [],
-        type: league.type || 'singles',
-      }));
+      // Only get leagues where the user is the creator
+      const userLeagues = allLeagues
+        .filter((league: League) => league.createdBy === userData.username)
+        .map((league: League) => ({
+          ...league,
+          teams: league.teams || [],
+          type: league.type || 'singles',
+        }));
 
-      // Separate active, pending, and archived leagues
-      const { active, pending, archived } = userLeagues.reduce(
-        (acc: { active: League[]; pending: League[]; archived: League[] }, league: League) => {
+      // Separate active and archived leagues (only for leagues user created)
+      const { active, archived } = userLeagues.reduce(
+        (acc: { active: League[]; archived: League[] }, league: League) => {
           const lastSession = league.schedule?.length > 0 
             ? parseISO(league.schedule[league.schedule.length - 1].date)
             : null;
 
-          // Check if user is the creator
-          const isCreator = league.createdBy === userData.username;
-          
-          // Check if user is a member of any team in the league
-          const isTeamMember = league.teams?.some((team: Team) => 
-            team.members.includes(userData.username)
-          );
-
-          // League is archived if it's past the last session date
           if (lastSession && isPast(lastSession)) {
-            // Only show archived leagues to the creator
-            if (isCreator) {
-              acc.archived.push(league);
-            }
-          } else if (isCreator) {
-            // Active leagues (only for creator)
+            acc.archived.push(league);
+          } else {
             acc.active.push(league);
-          } else if (isTeamMember) {
-            // Pending leagues (for team members who aren't creators)
-            acc.pending.push(league);
           }
           
           return acc;
         },
-        { active: [], pending: [], archived: [] }
+        { active: [], archived: [] }
       );
 
       setActiveLeagues(active);
-      setPendingLeagues(pending);
+      setPendingLeagues([]); // No pending leagues since we only show created leagues
       setArchivedLeagues(archived);
 
       // Filter teams - keep showing all teams where user is creator or member
@@ -108,7 +94,7 @@ const MyAccount = () => {
           <section>
             <LeagueManagement 
               leagues={activeLeagues}
-              pendingLeagues={pendingLeagues}
+              pendingLeagues={[]} // No pending leagues in My Account
               archivedLeagues={archivedLeagues} 
               setLeagues={setActiveLeagues}
             />
