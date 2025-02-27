@@ -1,6 +1,6 @@
 
-import { Team } from "../../types/team";
-import { Toast } from "@/components/ui/use-toast";
+import { type ToastProps } from "@/components/ui/toast";
+import { type Team } from "../../types/team";
 
 export const updateTeamInStorage = (updatedTeam: Team) => {
   const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
@@ -15,7 +15,7 @@ export const handlePlayerRemoval = (
   team: Team,
   playerToRemove: string,
   password: string,
-  toast: (props: Toast) => void
+  toast: (props: ToastProps) => void
 ): boolean => {
   if (password !== team.password) {
     toast({
@@ -70,4 +70,3 @@ export const handleCaptainTransfer = (
   localStorage.setItem("notifications", JSON.stringify(notifications));
   window.dispatchEvent(new Event("storage"));
 };
-
