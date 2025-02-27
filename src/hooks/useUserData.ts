@@ -41,6 +41,31 @@ export const useUserData = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const categorizeAndSetLeagues = (allLeagues: League[], userData: any) => {
+    const now = new Date();
+    const categorizedLeagues = {
+      active: [] as League[],
+      upcoming: [] as League[],
+      archived: [] as League[]
+    };
+
+    allLeagues.forEach((league: League) => {
+      const isUserLeague = league.createdBy === userData.username;
+      const isUserMember = league.teams?.some((team: Team) => 
+        team.members?.includes(userData.username)
+      );
+
+      if (isUserLeague || isUserMember) {
+        const category = categorizeLeague(league, userData.username, now);
+        categorizedLeagues[category].push(league);
+      }
+    });
+
+    setActiveLeagues(categorizedLeagues.active);
+    setUpcomingLeagues(categorizedLeagues.upcoming);
+    setArchivedLeagues(categorizedLeagues.archived);
+  };
+
   const loadUserData = () => {
     console.log("Loading user data...");
     const currentUser = localStorage.getItem("currentUser");
@@ -53,55 +78,14 @@ export const useUserData = () => {
     try {
       const userData = JSON.parse(currentUser);
       setUsername(userData.username);
-      console.log("Current user:", userData.username);
 
       const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-      console.log("All leagues from localStorage:", allLeagues);
-      
-      const now = new Date();
-      const categorizedLeagues = {
-        active: [] as League[],
-        upcoming: [] as League[],
-        archived: [] as League[]
-      };
-
-      allLeagues.forEach((league: League) => {
-        console.log(`Processing league: ${league.name}, created by: ${league.createdBy}`);
-        
-        const isUserLeague = league.createdBy === userData.username;
-        const isUserMember = league.teams?.some((team: Team) => 
-          team.members?.includes(userData.username)
-        );
-
-        console.log(`League ${league.name} - User is creator: ${isUserLeague}, User is member: ${isUserMember}`);
-
-        if (isUserLeague || isUserMember) {
-          const category = categorizeLeague(league, userData.username, now);
-          categorizedLeagues[category].push(league);
-          console.log(`${league.name}: Categorized as ${category}`);
-        } else {
-          console.log(`Skipping league ${league.name} - user not involved`);
-        }
-      });
-
-      console.log("Categorized leagues:", {
-        active: categorizedLeagues.active.length,
-        upcoming: categorizedLeagues.upcoming.length,
-        archived: categorizedLeagues.archived.length
-      });
-
-      setActiveLeagues(categorizedLeagues.active);
-      setUpcomingLeagues(categorizedLeagues.upcoming);
-      setArchivedLeagues(categorizedLeagues.archived);
+      categorizeAndSetLeagues(allLeagues, userData);
 
       const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
-      console.log("All teams from localStorage:", allTeams);
-      
       const userTeams = allTeams.filter((team: Team) => 
         team.createdBy === userData.username || team.members.includes(userData.username)
       );
-      console.log("Filtered user teams:", userTeams);
-      
       setTeams(userTeams);
     } catch (error) {
       console.error("Error loading user data:", error);
@@ -117,19 +101,20 @@ export const useUserData = () => {
   useEffect(() => {
     loadUserData();
     
-    // Handle both league updates and storage events by reloading all data
-    const handleDataUpdate = () => {
-      loadUserData();
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "leagues" || e.key === "lastLeagueUpdate") {
+        loadUserData();
+      }
     };
     
-    window.addEventListener('leagueUpdate', handleDataUpdate);
-    window.addEventListener('storage', handleDataUpdate);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('leagueUpdate', loadUserData);
     
     return () => {
-      window.removeEventListener('leagueUpdate', handleDataUpdate);
-      window.removeEventListener('storage', handleDataUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('leagueUpdate', loadUserData);
     };
-  }, [navigate, username]);
+  }, [navigate]);
 
   return {
     activeLeagues,

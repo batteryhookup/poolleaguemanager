@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,9 +61,8 @@ const CreateLeague = () => {
         return;
       }
 
-      // Get yesterday's date for testing
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
 
       const newLeague: League = {
         id: Date.now(),
@@ -73,43 +71,31 @@ const CreateLeague = () => {
         password,
         createdAt: new Date().toISOString(),
         createdBy: currentUser.username,
-        type: "singles" as const,
+        type: "singles",
         gameType: "8-ball",
         teams: [],
         schedule: [
           {
-            date: yesterday.toISOString().split('T')[0],
+            date: tomorrow.toISOString().split('T')[0],
             startTime: "19:00",
             endTime: "22:00"
           }
         ]
       };
 
-      // Add the new league to localStorage
       existingLeagues.push(newLeague);
       localStorage.setItem("leagues", JSON.stringify(existingLeagues));
-
-      // Force a storage event by updating a timestamp
+      
       localStorage.setItem('lastLeagueUpdate', Date.now().toString());
-
-      // Get the correct category for the new league and dispatch the event
-      const leagueCategory = categorizeLeague(newLeague, currentUser.username);
-      console.log(`Created league ${newLeague.name} categorized as: ${leagueCategory}`);
-
-      // Create and dispatch the leagueUpdate event
-      const event = new CustomEvent('leagueUpdate');
-      window.dispatchEvent(event);
+      
+      window.dispatchEvent(new Event('leagueUpdate'));
 
       toast({
         title: "Success",
         description: "League created successfully!",
       });
 
-      // Use setTimeout to ensure state updates have time to process
-      setTimeout(() => {
-        navigate("/account");
-      }, 100);
-
+      navigate("/account");
     } catch (error) {
       console.error("Error creating league:", error);
       toast({
