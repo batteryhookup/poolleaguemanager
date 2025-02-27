@@ -41,7 +41,6 @@ const CreateLeague = () => {
 
   const handleDialogClose = () => {
     setShowExplanationDialog(false);
-    // Refresh the page by navigating to the account page
     navigate("/account");
   };
 
@@ -103,14 +102,14 @@ const CreateLeague = () => {
       localStorage.setItem("leagues", JSON.stringify(existingLeagues));
       
       window.dispatchEvent(new Event('leagueUpdate'));
+
+      setIsLoading(false); // Set loading to false before showing dialog
+      setShowExplanationDialog(true); // Show the dialog
       
       toast({
         title: "Success",
         description: "League created successfully!",
       });
-
-      // Instead of navigating immediately, show the explanation dialog
-      setShowExplanationDialog(true);
     } catch (error) {
       console.error("Error creating league:", error);
       toast({
@@ -118,7 +117,6 @@ const CreateLeague = () => {
         title: "Error",
         description: "Failed to create league. Please try again.",
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -189,7 +187,7 @@ const CreateLeague = () => {
           </Button>
         </form>
 
-        <Dialog open={showExplanationDialog} onOpenChange={handleDialogClose}>
+        <Dialog open={showExplanationDialog} onOpenChange={setShowExplanationDialog}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>League Successfully Created!</DialogTitle>
