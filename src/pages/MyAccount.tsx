@@ -5,7 +5,7 @@ import { TeamManagement } from "@/components/account/TeamManagement";
 import { StatsManagement } from "@/components/account/StatsManagement";
 import { AccountActions } from "@/components/account/AccountActions";
 import { useUserData } from "@/hooks/useUserData";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const MyAccount = () => {
@@ -18,6 +18,7 @@ const MyAccount = () => {
     username,
     setActiveLeagues,
     setTeams,
+    loadUserData,
   } = useUserData();
 
   useEffect(() => {
@@ -27,6 +28,20 @@ const MyAccount = () => {
       return;
     }
   }, [navigate]);
+
+  // Add delayed refresh handler
+  useEffect(() => {
+    const handleDelayedRefresh = () => {
+      console.log("Scheduling delayed refresh...");
+      setTimeout(() => {
+        console.log("Executing delayed refresh");
+        loadUserData();
+      }, 1000);
+    };
+
+    window.addEventListener('delayedLeagueRefresh', handleDelayedRefresh);
+    return () => window.removeEventListener('delayedLeagueRefresh', handleDelayedRefresh);
+  }, [loadUserData]);
 
   return (
     <Layout>

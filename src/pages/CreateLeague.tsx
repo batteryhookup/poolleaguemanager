@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,18 +87,17 @@ const CreateLeague = () => {
       localStorage.setItem("leagues", JSON.stringify(existingLeagues));
       localStorage.setItem('lastLeagueUpdate', Date.now().toString());
 
-      // First dispatch the event
+      // First dispatch the regular update event
       window.dispatchEvent(new Event('leagueUpdate'));
-
-      // Give a small delay before navigation to allow for state updates
-      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Then dispatch the delayed refresh event
+      window.dispatchEvent(new Event('delayedLeagueRefresh'));
       
       toast({
         title: "Success",
         description: "League created successfully!",
       });
 
-      // Navigate after the delay
       navigate("/account");
     } catch (error) {
       console.error("Error creating league:", error);

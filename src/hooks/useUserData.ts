@@ -107,8 +107,7 @@ export const useUserData = () => {
 
     const handleLeagueUpdate = () => {
       console.log("League update event received");
-      // Force an immediate update
-      setTimeout(loadUserData, 0);
+      loadUserData();
     };
 
     loadUserData();
@@ -130,5 +129,6 @@ export const useUserData = () => {
     username,
     setActiveLeagues,
     setTeams,
+    loadUserData, // Expose loadUserData
   };
 };
