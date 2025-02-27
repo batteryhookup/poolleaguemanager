@@ -2,9 +2,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Trash2, UserPlus } from "lucide-react";
+import { Crown, Trash2, UserPlus } from "lucide-react";
 import { Team } from "../types/team";
 import { SearchPlayerDialog } from "./SearchPlayerDialog";
+import { TransferCaptainDialog } from "./TransferCaptainDialog";
 import {
   Tooltip,
   TooltipContent,
@@ -20,12 +21,54 @@ interface TeamListProps {
 
 export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
 
   const handleAddPlayers = (team: Team) => {
     setSelectedTeam(team);
     setIsSearchOpen(true);
+  };
+
+  const handleTransferCaptain = (team: Team) => {
+    setSelectedTeam(team);
+    setIsTransferOpen(true);
+  };
+
+  const onTransferCaptain = (newCaptain: string, newPassword: string) => {
+    if (!selectedTeam) return;
+
+    // Update the team in localStorage
+    const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+    const updatedTeams = allTeams.map((t: Team) => {
+      if (t.id === selectedTeam.id) {
+        return {
+          ...t,
+          createdBy: newCaptain,
+          password: newPassword,
+        };
+      }
+      return t;
+    });
+
+    localStorage.setItem("teams", JSON.stringify(updatedTeams));
+
+    // Create a congratulatory message for the new captain
+    const notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
+    notifications.push({
+      id: Date.now(),
+      userId: newCaptain,
+      message: `Congratulations! You are now the team captain of "${selectedTeam.name}". Your new team password has been set.`,
+      read: false,
+      timestamp: new Date().toISOString(),
+    });
+    localStorage.setItem("notifications", JSON.stringify(notifications));
+
+    // Trigger storage event to refresh other tabs
+    window.dispatchEvent(new Event("storage"));
+
+    setIsTransferOpen(false);
+    setSelectedTeam(null);
   };
 
   if (teams.length === 0) {
@@ -54,7 +97,19 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
                     <div className="mt-1">
                       {team.members.map((member) => (
                         <div key={member} className="flex items-center justify-between group">
-                          <span>{member}</span>
+                          <div className="flex items-center gap-2">
+                            <span>{member}</span>
+                            {team.createdBy === member && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Crown className="h-4 w-4 text-yellow-500" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Team Captain</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                           {member === currentUser.username && !isCreator && (
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -78,21 +133,30 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleAddPlayers(team)}
-                  >
-                    <UserPlus className="h-4 w-4 text-muted-foreground" />
-                  </Button>
                   {isCreator && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onDeleteTeam(team)}
-                    >
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleAddPlayers(team)}
+                      >
+                        <UserPlus className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleTransferCaptain(team)}
+                      >
+                        <Crown className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDeleteTeam(team)}
+                      >
+                        <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </>
                   )}
                 </div>
               </CardHeader>
@@ -120,6 +184,16 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
           setSelectedTeam(null);
         }}
         team={selectedTeam}
+      />
+
+      <TransferCaptainDialog
+        isOpen={isTransferOpen}
+        onClose={() => {
+          setIsTransferOpen(false);
+          setSelectedTeam(null);
+        }}
+        team={selectedTeam}
+        onTransferCaptain={onTransferCaptain}
       />
     </TooltipProvider>
   );
