@@ -1,31 +1,14 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronUp, Trash2, Edit, UserCheck, UserX, Users } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, Edit } from "lucide-react";
 import { League, Team } from "../types/league";
 import { EditLeagueDialog } from "./EditLeagueDialog";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { LeagueTeamRow } from "./LeagueTeamRow";
+import { LeagueRequest } from "./LeagueRequest";
+import { LeagueRequestConfirmDialog } from "./LeagueRequestConfirmDialog";
 
 interface LeagueListProps {
   leagues: League[];
@@ -33,16 +16,6 @@ interface LeagueListProps {
   onAddTeam: (league: League) => void;
   onDeleteTeam: (league: League, team: Team) => void;
   onUpdateLeague: (updatedLeague: League) => void;
-}
-
-interface LeagueRequest {
-  id: number;
-  leagueId: number;
-  requestType: "player" | "team";
-  username: string;
-  teamId: string | null;
-  status: "pending" | "accepted" | "rejected";
-  timestamp: string;
 }
 
 export function LeagueList({ 
@@ -113,7 +86,7 @@ export function LeagueList({
     });
   };
 
-  const getPendingRequests = (leagueId: number): LeagueRequest[] => {
+  const getPendingRequests = (leagueId: number) => {
     const allRequests = JSON.parse(localStorage.getItem("leagueRequests") || "[]");
     return allRequests.filter((req: LeagueRequest) => 
       req.leagueId === leagueId && req.status === "pending"
@@ -133,200 +106,83 @@ export function LeagueList({
   };
 
   return (
-    <TooltipProvider>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {leagues.map((league) => (
-          <Card key={league.id}>
-            <CardHeader className="flex flex-row items-start justify-between">
-              <div>
-                <CardTitle className="text-lg">{league.name}</CardTitle>
-                <p className="text-sm text-muted-foreground">{league.location}</p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => onAddTeam(league)}
-                >
-                  Add Teams
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setEditingLeague(league)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDeleteLeague(league)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {getPendingRequests(league.id).length > 0 && (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {leagues.map((league) => (
+        <Card key={league.id}>
+          <CardHeader className="flex flex-row items-start justify-between">
+            <div>
+              <CardTitle className="text-lg">{league.name}</CardTitle>
+              <p className="text-sm text-muted-foreground">{league.location}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => onAddTeam(league)}>
+                Add Teams
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setEditingLeague(league)}>
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => onDeleteLeague(league)}>
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {getPendingRequests(league.id).length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="font-semibold">Pending Requests</h3>
                   <div className="space-y-2">
-                    <h3 className="font-semibold">Pending Requests</h3>
-                    <div className="space-y-2">
-                      {getPendingRequests(league.id).map((request) => (
-                        <div key={request.id} className="flex flex-col p-2 bg-accent rounded-md">
-                          <div className="flex items-center justify-between">
-                            {request.requestType === "team" ? (
-                              <Collapsible
-                                open={expandedRequests.includes(request.id)}
-                                onOpenChange={() => toggleRequestExpansion(request.id)}
-                                className="w-full"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <CollapsibleTrigger asChild>
-                                    <Button variant="ghost" className="p-0 h-auto hover:bg-transparent">
-                                      <div className="flex items-center gap-2">
-                                        <Users className="h-4 w-4" />
-                                        <span className="font-medium">
-                                          Team: {getTeamName(request.teamId!)}
-                                        </span>
-                                        {expandedRequests.includes(request.id) ? (
-                                          <ChevronUp className="h-4 w-4" />
-                                        ) : (
-                                          <ChevronDown className="h-4 w-4" />
-                                        )}
-                                      </div>
-                                    </Button>
-                                  </CollapsibleTrigger>
-                                  <div className="flex gap-2">
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() => setConfirmRequest({ request, action: "accept" })}
-                                        >
-                                          <UserCheck className="h-4 w-4 text-green-600" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Accept request</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() => setConfirmRequest({ request, action: "reject" })}
-                                        >
-                                          <UserX className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Decline request</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </div>
-                                </div>
-                                <CollapsibleContent className="mt-2">
-                                  <div className="pl-6 space-y-1">
-                                    <p className="text-sm text-muted-foreground">Team Members:</p>
-                                    {getTeamMembers(request.teamId!).map((member) => (
-                                      <p key={member} className="text-sm pl-2">{member}</p>
-                                    ))}
-                                  </div>
-                                </CollapsibleContent>
-                              </Collapsible>
-                            ) : (
-                              <div className="flex items-center justify-between w-full">
-                                <span className="font-medium">
-                                  Player: {request.username}
-                                </span>
-                                <div className="flex gap-2">
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setConfirmRequest({ request, action: "accept" })}
-                                      >
-                                        <UserCheck className="h-4 w-4 text-green-600" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Accept request</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setConfirmRequest({ request, action: "reject" })}
-                                      >
-                                        <UserX className="h-4 w-4 text-destructive" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Decline request</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(request.timestamp).toLocaleDateString()}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                    {getPendingRequests(league.id).map((request) => (
+                      <div key={request.id} className="flex flex-col p-2 bg-accent rounded-md">
+                        <LeagueRequest
+                          request={request}
+                          expanded={expandedRequests.includes(request.id)}
+                          teamName={request.teamId ? getTeamName(request.teamId) : ""}
+                          teamMembers={request.teamId ? getTeamMembers(request.teamId) : []}
+                          onToggleExpand={() => toggleRequestExpansion(request.id)}
+                          onAccept={() => setConfirmRequest({ request, action: "accept" })}
+                          onReject={() => setConfirmRequest({ request, action: "reject" })}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(request.timestamp).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
 
-                {league.teams && league.teams.length > 0 && (
-                  <div className="space-y-2">
-                    <Button
-                      variant="ghost"
-                      className="w-full flex justify-between"
-                      onClick={() => toggleLeagueExpansion(league.id)}
-                    >
-                      Teams
-                      {expandedLeagues.includes(league.id) ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </Button>
-                    {expandedLeagues.includes(league.id) && (
-                      <ul className="space-y-2 pl-4">
-                        {league.teams.map(team => (
-                          <li 
-                            key={team.id} 
-                            className="text-sm group flex items-center justify-between p-2 hover:bg-accent rounded-md"
-                          >
-                            {team.name}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteTeam(league, team);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </li>
-                        ))}
-                      </ul>
+              {league.teams && league.teams.length > 0 && (
+                <div className="space-y-2">
+                  <Button
+                    variant="ghost"
+                    className="w-full flex justify-between"
+                    onClick={() => toggleLeagueExpansion(league.id)}
+                  >
+                    Teams
+                    {expandedLeagues.includes(league.id) ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
                     )}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  </Button>
+                  {expandedLeagues.includes(league.id) && (
+                    <ul className="space-y-2 pl-4">
+                      {league.teams.map(team => (
+                        <LeagueTeamRow
+                          key={team.id}
+                          team={team}
+                          onDeleteTeam={() => onDeleteTeam(league, team)}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
 
       <EditLeagueDialog
         league={editingLeague}
@@ -335,41 +191,16 @@ export function LeagueList({
         onSave={onUpdateLeague}
       />
 
-      <AlertDialog 
-        open={confirmRequest !== null}
-        onOpenChange={() => setConfirmRequest(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmRequest?.action === "accept" ? "Accept Request" : "Decline Request"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to {confirmRequest?.action === "accept" ? "accept" : "decline"} this{" "}
-              {confirmRequest?.request?.requestType === "team" ? "team" : "player"} request?
-              {confirmRequest?.request?.requestType === "team" && confirmRequest?.action === "accept" && (
-                <> The team will be added to the league.</>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConfirmRequest(null)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (confirmRequest) {
-                  handleRequestAction(confirmRequest.request, confirmRequest.action);
-                  setConfirmRequest(null);
-                }
-              }}
-              className={confirmRequest?.action === "reject" ? "bg-destructive hover:bg-destructive/90" : ""}
-            >
-              {confirmRequest?.action === "accept" ? "Accept" : "Decline"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </TooltipProvider>
+      <LeagueRequestConfirmDialog
+        confirmRequest={confirmRequest}
+        onClose={() => setConfirmRequest(null)}
+        onConfirm={() => {
+          if (confirmRequest) {
+            handleRequestAction(confirmRequest.request, confirmRequest.action);
+            setConfirmRequest(null);
+          }
+        }}
+      />
+    </div>
   );
 }
