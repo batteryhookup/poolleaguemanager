@@ -46,6 +46,9 @@ const MyAccount = () => {
   const [isAddTeamDialogOpen, setIsAddTeamDialogOpen] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
   const [expandedLeagues, setExpandedLeagues] = useState<number[]>([]);
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [isDeleteTeamDialogOpen, setIsDeleteTeamDialogOpen] = useState(false);
+  const [deleteTeamPassword, setDeleteTeamPassword] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -223,6 +226,41 @@ const MyAccount = () => {
     });
   };
 
+  const handleDeleteTeam = () => {
+    if (!selectedLeague || !selectedTeam) return;
+
+    if (deleteTeamPassword !== selectedLeague.password) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Incorrect league password.",
+      });
+      return;
+    }
+
+    const updatedLeagues = leagues.map(league => {
+      if (league.id === selectedLeague.id) {
+        return {
+          ...league,
+          teams: league.teams.filter(team => team.id !== selectedTeam.id),
+        };
+      }
+      return league;
+    });
+
+    setLeagues(updatedLeagues);
+    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+
+    setDeleteTeamPassword("");
+    setSelectedTeam(null);
+    setIsDeleteTeamDialogOpen(false);
+
+    toast({
+      title: "Success",
+      description: "Team deleted successfully!",
+    });
+  };
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -296,8 +334,24 @@ const MyAccount = () => {
                                   {expandedLeagues.includes(league.id) && (
                                     <ul className="space-y-2 pl-4">
                                       {league.teams.map(team => (
-                                        <li key={team.id} className="text-sm">
+                                        <li 
+                                          key={team.id} 
+                                          className="text-sm group flex items-center justify-between p-2 hover:bg-accent rounded-md"
+                                        >
                                           {team.name}
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedLeague(league);
+                                              setSelectedTeam(team);
+                                              setIsDeleteTeamDialogOpen(true);
+                                            }}
+                                          >
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                          </Button>
                                         </li>
                                       ))}
                                     </ul>
@@ -503,6 +557,35 @@ const MyAccount = () => {
               className="w-full"
             >
               Add Team
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteTeamDialogOpen} onOpenChange={setIsDeleteTeamDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Team</DialogTitle>
+            <DialogDescription>
+              To delete "{selectedTeam?.name}" from "{selectedLeague?.name}", please enter the league password.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="deleteTeamPassword">League Password</Label>
+              <Input
+                id="deleteTeamPassword"
+                type="password"
+                value={deleteTeamPassword}
+                onChange={(e) => setDeleteTeamPassword(e.target.value)}
+              />
+            </div>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteTeam}
+              className="w-full"
+            >
+              Delete Team
             </Button>
           </div>
         </DialogContent>
