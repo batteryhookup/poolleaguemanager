@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, Trash2, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Trophy, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Team {
@@ -218,13 +217,12 @@ export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps)
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
-                          size="icon"
                           onClick={() => {
                             setSelectedLeague(league);
                             setIsAddTeamDialogOpen(true);
                           }}
                         >
-                          <Plus className="h-4 w-4" />
+                          Add Teams
                         </Button>
                         <Button
                           variant="ghost"
