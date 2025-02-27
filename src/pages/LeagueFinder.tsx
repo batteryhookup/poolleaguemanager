@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { League } from "@/components/account/types/league";
-import { format, parseISO, isFuture, isPast } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -44,21 +44,31 @@ const LeagueFinder = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Add interval to check for league updates
   useEffect(() => {
-    // Simply get all leagues without any filtering
-    const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-    setLeagues(allLeagues);
+    const loadData = () => {
+      const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+      setLeagues(allLeagues);
 
-    // Still load user teams for join functionality
-    const currentUser = localStorage.getItem("currentUser");
-    if (currentUser) {
-      const username = JSON.parse(currentUser).username;
-      const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
-      const userTeams = allTeams.filter((team: Team) => 
-        team.createdBy === username || team.members.includes(username)
-      );
-      setUserTeams(userTeams);
-    }
+      const currentUser = localStorage.getItem("currentUser");
+      if (currentUser) {
+        const username = JSON.parse(currentUser).username;
+        const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+        const userTeams = allTeams.filter((team: Team) => 
+          team.createdBy === username || team.members.includes(username)
+        );
+        setUserTeams(userTeams);
+      }
+    };
+
+    // Load data immediately
+    loadData();
+
+    // Set up interval to refresh data
+    const intervalId = setInterval(loadData, 1000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleJoinClick = (league: League) => {
@@ -117,16 +127,16 @@ const LeagueFinder = () => {
     });
   };
 
-  const getLeagueStatus = (sessions: League["schedule"]) => {
-    if (!sessions || sessions.length === 0) return null;
+  const getLeagueStatus = (league: League) => {
+    if (!league.schedule || league.schedule.length === 0) return null;
 
-    const firstSession = parseISO(sessions[0].date);
-    const lastSession = parseISO(sessions[sessions.length - 1].date);
     const now = new Date();
+    const firstSession = parseISO(`${league.schedule[0].date}T${league.schedule[0].startTime}`);
+    const lastSession = parseISO(`${league.schedule[league.schedule.length - 1].date}T${league.schedule[league.schedule.length - 1].endTime}`);
 
-    if (isPast(lastSession)) {
+    if (now > lastSession) {
       return <Badge variant="secondary">Ended</Badge>;
-    } else if (isFuture(firstSession)) {
+    } else if (now < firstSession) {
       return <Badge variant="default">Upcoming</Badge>;
     } else {
       return <Badge variant="default" className="bg-green-500">Ongoing</Badge>;
@@ -136,14 +146,14 @@ const LeagueFinder = () => {
   const getScheduleDescription = (league: League) => {
     if (!league.schedule || league.schedule.length === 0) return "No schedule available";
 
-    const firstSession = parseISO(league.schedule[0].date);
-    const lastSession = parseISO(league.schedule[league.schedule.length - 1].date);
+    const firstSession = parseISO(`${league.schedule[0].date}T${league.schedule[0].startTime}`);
+    const lastSession = parseISO(`${league.schedule[league.schedule.length - 1].date}T${league.schedule[league.schedule.length - 1].endTime}`);
     const dayOfWeek = format(firstSession, "EEEE");
     const timeOfDay = parseInt(league.schedule[0].startTime.split(":")[0]) < 17 ? "afternoons" : "nights";
     
     const dateRange = `${format(firstSession, "MMM d, yyyy")} - ${format(lastSession, "MMM d, yyyy")}`;
     
-    if (isFuture(firstSession)) {
+    if (firstSession > new Date()) {
       const startingIn = format(firstSession, "'Starting' MMM d, yyyy");
       return `${dayOfWeek} ${timeOfDay}, ${startingIn}`;
     }
