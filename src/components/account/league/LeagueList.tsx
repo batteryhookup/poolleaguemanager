@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +16,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface LeagueListProps {
   leagues: League[];
@@ -46,6 +55,10 @@ export function LeagueList({
   const [expandedLeagues, setExpandedLeagues] = useState<number[]>([]);
   const [editingLeague, setEditingLeague] = useState<League | null>(null);
   const [expandedRequests, setExpandedRequests] = useState<number[]>([]);
+  const [confirmRequest, setConfirmRequest] = useState<{
+    request: LeagueRequest;
+    action: "accept" | "reject";
+  } | null>(null);
   const { toast } = useToast();
 
   const toggleLeagueExpansion = (leagueId: number) => {
@@ -85,9 +98,6 @@ export function LeagueList({
               teams: [...leagueTeams, team]
             };
           }
-        } else {
-          // Handle individual player join logic if needed
-          // This would depend on how you want to track individual players
         }
         
         localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
@@ -157,7 +167,6 @@ export function LeagueList({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Pending Requests Section */}
                 {getPendingRequests(league.id).length > 0 && (
                   <div className="space-y-2">
                     <h3 className="font-semibold">Pending Requests</h3>
@@ -193,7 +202,7 @@ export function LeagueList({
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          onClick={() => handleRequestAction(request, "accept")}
+                                          onClick={() => setConfirmRequest({ request, action: "accept" })}
                                         >
                                           <UserCheck className="h-4 w-4 text-green-600" />
                                         </Button>
@@ -207,7 +216,7 @@ export function LeagueList({
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          onClick={() => handleRequestAction(request, "reject")}
+                                          onClick={() => setConfirmRequest({ request, action: "reject" })}
                                         >
                                           <UserX className="h-4 w-4 text-destructive" />
                                         </Button>
@@ -238,7 +247,7 @@ export function LeagueList({
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        onClick={() => handleRequestAction(request, "accept")}
+                                        onClick={() => setConfirmRequest({ request, action: "accept" })}
                                       >
                                         <UserCheck className="h-4 w-4 text-green-600" />
                                       </Button>
@@ -252,7 +261,7 @@ export function LeagueList({
                                       <Button
                                         variant="ghost"
                                         size="icon"
-                                        onClick={() => handleRequestAction(request, "reject")}
+                                        onClick={() => setConfirmRequest({ request, action: "reject" })}
                                       >
                                         <UserX className="h-4 w-4 text-destructive" />
                                       </Button>
@@ -274,7 +283,6 @@ export function LeagueList({
                   </div>
                 )}
 
-                {/* Teams Section */}
                 {league.teams && league.teams.length > 0 && (
                   <div className="space-y-2">
                     <Button
@@ -326,6 +334,42 @@ export function LeagueList({
         onClose={() => setEditingLeague(null)}
         onSave={onUpdateLeague}
       />
+
+      <AlertDialog 
+        open={confirmRequest !== null}
+        onOpenChange={() => setConfirmRequest(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmRequest?.action === "accept" ? "Accept Request" : "Decline Request"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to {confirmRequest?.action === "accept" ? "accept" : "decline"} this{" "}
+              {confirmRequest?.request?.requestType === "team" ? "team" : "player"} request?
+              {confirmRequest?.request?.requestType === "team" && confirmRequest?.action === "accept" && (
+                <> The team will be added to the league.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmRequest(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmRequest) {
+                  handleRequestAction(confirmRequest.request, confirmRequest.action);
+                  setConfirmRequest(null);
+                }
+              }}
+              className={confirmRequest?.action === "reject" ? "bg-destructive hover:bg-destructive/90" : ""}
+            >
+              {confirmRequest?.action === "accept" ? "Accept" : "Decline"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   );
 }
