@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { parseISO } from "date-fns";
+import { categorizeLeague } from "@/hooks/useUserData";
 
 const CreateLeague = () => {
   const [leagueName, setLeagueName] = useState("");
@@ -87,9 +87,13 @@ const CreateLeague = () => {
       existingLeagues.push(newLeague);
       localStorage.setItem("leagues", JSON.stringify(existingLeagues));
 
-      // Dispatch leagueUpdate event with the new league data
+      // Get the category for the new league
+      const category = categorizeLeague(newLeague, currentUser.username);
+      console.log(`New league category: ${category}`);
+
+      // Dispatch leagueUpdate event with the category information
       window.dispatchEvent(new CustomEvent('leagueUpdate', { 
-        detail: newLeague,
+        detail: { league: newLeague, category },
         bubbles: true,
         composed: true 
       }));
