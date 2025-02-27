@@ -5,9 +5,6 @@ import { CreateLeagueCard } from "@/components/home/CreateLeagueCard";
 import { WelcomeHeader } from "@/components/home/WelcomeHeader";
 
 const Index = () => {
-  // Clear any existing user data on initial page load
-  localStorage.removeItem("currentUser");
-  
   const currentUser = localStorage.getItem("currentUser");
 
   const handleLogout = () => {
