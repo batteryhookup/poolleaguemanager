@@ -58,6 +58,7 @@ const CreateLeague = () => {
           title: "Error",
           description: "A league with this name already exists.",
         });
+        setIsLoading(false);
         return;
       }
 
@@ -100,11 +101,11 @@ const CreateLeague = () => {
         }
       });
 
-      // Force a storage event for cross-tab updates
-      localStorage.setItem('lastLeagueUpdate', Date.now().toString());
-
       // Dispatch the event
       window.dispatchEvent(leagueUpdateEvent);
+
+      // Force a storage event for cross-tab updates
+      localStorage.setItem('lastLeagueUpdate', Date.now().toString());
 
       toast({
         title: "Success",
@@ -113,6 +114,7 @@ const CreateLeague = () => {
 
       navigate("/account");
     } catch (error) {
+      console.error("Error creating league:", error);
       toast({
         variant: "destructive",
         title: "Error",
