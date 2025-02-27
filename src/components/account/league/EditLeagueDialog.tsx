@@ -25,12 +25,18 @@ export function EditLeagueDialog({
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [gameType, setGameType] = useState("");
+  const [customGameType, setCustomGameType] = useState("");
   const { toast } = useToast();
 
   const handleVerifyPassword = () => {
     if (league && password === league.password) {
       setIsVerified(true);
       setEditedLeague({ ...league });
+      // Set initial game type state
+      const isCustomGameType = !["8-ball", "9-ball", "10-ball"].includes(league.gameType);
+      setGameType(isCustomGameType ? "specify" : league.gameType);
+      setCustomGameType(isCustomGameType ? league.gameType : "");
       setPassword("");
     } else {
       toast({
@@ -45,6 +51,9 @@ export function EditLeagueDialog({
     if (!editedLeague) return;
 
     let updatedLeague = { ...editedLeague };
+
+    // Update game type
+    updatedLeague.gameType = gameType === "specify" ? customGameType : gameType;
 
     // Only update the password if the user is changing it and both new passwords match
     if (isChangingPassword) {
@@ -82,6 +91,8 @@ export function EditLeagueDialog({
     setNewPassword("");
     setConfirmNewPassword("");
     setIsChangingPassword(false);
+    setGameType("");
+    setCustomGameType("");
     onClose();
   };
 
@@ -139,14 +150,7 @@ export function EditLeagueDialog({
 
             <div className="space-y-2">
               <Label htmlFor="gameType">Game Type</Label>
-              <Select
-                value={editedLeague?.gameType}
-                onValueChange={(value) =>
-                  setEditedLeague(prev =>
-                    prev ? { ...prev, gameType: value } : null
-                  )
-                }
-              >
+              <Select value={gameType} onValueChange={setGameType}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select game type" />
                 </SelectTrigger>
@@ -154,9 +158,19 @@ export function EditLeagueDialog({
                   <SelectItem value="8-ball">8 Ball</SelectItem>
                   <SelectItem value="9-ball">9 Ball</SelectItem>
                   <SelectItem value="10-ball">10 Ball</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="specify">Specify Other</SelectItem>
                 </SelectContent>
               </Select>
+              {gameType === "specify" && (
+                <div className="mt-2">
+                  <Input
+                    placeholder="Enter custom game type"
+                    value={customGameType}
+                    onChange={(e) => setCustomGameType(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             {editedLeague?.type === "team" && (
