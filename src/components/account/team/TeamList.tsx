@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Crown, Trash2, Pencil } from "lucide-react";
+import { Crown, Trash2 } from "lucide-react";
 import { Team } from "../types/team";
 import { EditTeamDialog } from "./EditTeamDialog";
 import {
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface TeamListProps {
   teams: Team[];
@@ -54,6 +54,36 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
     toast({
       title: "Success",
       description: "Team updated successfully.",
+    });
+  };
+
+  const handleRemovePlayer = (team: Team, playerToRemove: string) => {
+    if (team.createdBy === playerToRemove) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You cannot remove the team captain.",
+      });
+      return;
+    }
+
+    const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+    const updatedTeams = allTeams.map((t: Team) => {
+      if (t.id === team.id) {
+        return {
+          ...t,
+          members: t.members.filter((member) => member !== playerToRemove),
+        };
+      }
+      return t;
+    });
+    localStorage.setItem("teams", JSON.stringify(updatedTeams));
+
+    window.dispatchEvent(new Event("storage"));
+
+    toast({
+      title: "Success",
+      description: `${playerToRemove} has been removed from the team.`,
     });
   };
 
@@ -176,7 +206,17 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div className="space-y-1">
                   <CardTitle className="text-lg">{team.name}</CardTitle>
-                  <div className="text-sm text-muted-foreground">
+                  {isCreator && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditTeam(team)}
+                      className="mt-2"
+                    >
+                      Edit Team
+                    </Button>
+                  )}
+                  <div className="text-sm text-muted-foreground mt-2">
                     Members ({team.members.length}):
                     <div className="mt-1">
                       {team.members.map((member) => (
@@ -204,59 +244,55 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
                               </Button>
                             )}
                           </div>
-                          {member === currentUser.username && !isCreator && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                                  onClick={() => onLeaveTeam(team)}
-                                >
-                                  <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Leave team</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
+                          <div className="flex gap-2">
+                            {isCreator && member !== currentUser.username && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                    onClick={() => handleRemovePlayer(team, member)}
+                                  >
+                                    <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Remove player</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {member === currentUser.username && !isCreator && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                                    onClick={() => onLeaveTeam(team)}
+                                  >
+                                    <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Leave team</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
                 {isCreator && (
-                  <div className="flex gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditTeam(team)}
-                        >
-                          <Pencil className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Edit Team</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onDeleteTeam(team)}
-                        >
-                          <Trash2 className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Delete Team</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onDeleteTeam(team)}
+                  >
+                    <Trash2 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
                 )}
               </CardHeader>
               {pendingInvites.length > 0 && (
