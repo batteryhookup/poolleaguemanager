@@ -6,21 +6,7 @@ import { LeagueManagement } from "@/components/account/LeagueManagement";
 import { TeamManagement } from "@/components/account/TeamManagement";
 import { StatsManagement } from "@/components/account/StatsManagement";
 import { AccountActions } from "@/components/account/AccountActions";
-
-interface Team {
-  id: number;
-  name: string;
-}
-
-interface League {
-  id: number;
-  name: string;
-  location: string;
-  createdAt: string;
-  createdBy: string;
-  password: string;
-  teams: Team[];
-}
+import { League } from "@/components/account/types/league";
 
 const MyAccount = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
@@ -38,7 +24,8 @@ const MyAccount = () => {
       (league: League) => league.createdBy === JSON.parse(currentUser).username
     ).map((league: League) => ({
       ...league,
-      teams: league.teams || []
+      teams: league.teams || [],
+      type: league.type || 'singles', // Provide default value for existing leagues
     }));
     setLeagues(userLeagues);
   }, [navigate]);
