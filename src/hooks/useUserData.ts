@@ -11,7 +11,6 @@ export const categorizeLeague = (league: League, username: string, now: Date = n
     return 'active';
   }
 
-  // Create Date objects that combine the date and time in the local timezone
   const firstSession = new Date(`${league.schedule[0].date}T${league.schedule[0].startTime}`);
   const lastSession = new Date(`${league.schedule[league.schedule.length - 1].date}T${league.schedule[league.schedule.length - 1].endTime}`);
 
@@ -56,7 +55,6 @@ export const useUserData = () => {
       setUsername(userData.username);
       console.log("Current user:", userData.username);
 
-      // Get all leagues from localStorage
       const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
       console.log("All leagues from localStorage:", allLeagues);
       
@@ -67,11 +65,9 @@ export const useUserData = () => {
         archived: [] as League[]
       };
 
-      // Process all leagues
       allLeagues.forEach((league: League) => {
         console.log(`Processing league: ${league.name}, created by: ${league.createdBy}`);
         
-        // Check if user is creator or member of any team in the league
         const isUserLeague = league.createdBy === userData.username;
         const isUserMember = league.teams?.some((team: Team) => 
           team.members?.includes(userData.username)
@@ -98,7 +94,6 @@ export const useUserData = () => {
       setUpcomingLeagues(categorizedLeagues.upcoming);
       setArchivedLeagues(categorizedLeagues.archived);
 
-      // Filter teams - keep showing all teams where user is creator or member
       const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
       console.log("All teams from localStorage:", allTeams);
       
@@ -122,22 +117,16 @@ export const useUserData = () => {
   useEffect(() => {
     loadUserData();
     
-    // Add event listener for league updates
     const handleLeagueUpdate = (event: Event) => {
       console.log("League update event received:", event);
       
-      // Check if it's a CustomEvent with detail
       if (event instanceof CustomEvent) {
         const { league, category, action } = event.detail;
         console.log(`League update: ${action}, Category: ${category}`, league);
         
-        // Re-categorize the league here to ensure correct placement
-        const currentCategory = categorizeLeague(league, username);
-        console.log(`Recategorized as: ${currentCategory}`);
-        
         if (action === 'create') {
-          // Use the recategorized category instead of the one from the event
-          switch (currentCategory) {
+          // Use the category provided by the event
+          switch (category) {
             case 'active':
               setActiveLeagues(prev => [...prev, league]);
               break;
@@ -151,11 +140,10 @@ export const useUserData = () => {
         }
       }
       
-      // Still reload all data to ensure consistency
+      // Reload all data to ensure consistency with other changes
       loadUserData();
     };
     
-    // Handle both custom leagueUpdate event and storage events
     window.addEventListener('leagueUpdate', handleLeagueUpdate);
     window.addEventListener('storage', handleLeagueUpdate);
     
@@ -175,3 +163,4 @@ export const useUserData = () => {
     setTeams,
   };
 };
+
