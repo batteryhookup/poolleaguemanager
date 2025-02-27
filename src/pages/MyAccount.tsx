@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/Layout";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -44,6 +43,10 @@ const MyAccount = () => {
       // Separate active, pending, and archived leagues
       const { active, pending, archived } = userLeagues.reduce(
         (acc: { active: League[]; pending: League[]; archived: League[] }, league: League) => {
+          const lastSession = league.schedule?.length > 0 
+            ? parseISO(league.schedule[league.schedule.length - 1].date)
+            : null;
+
           // Check if user is the creator
           const isCreator = league.createdBy === userData.username;
           
@@ -52,23 +55,17 @@ const MyAccount = () => {
             team.members.includes(userData.username)
           );
 
-          // Only process leagues where user is involved
-          if (!isCreator && !isTeamMember) {
-            return acc;
-          }
-
-          const lastSession = league.schedule?.length > 0 
-            ? parseISO(league.schedule[league.schedule.length - 1].date)
-            : null;
-
+          // League is archived if it's past the last session date
           if (lastSession && isPast(lastSession)) {
-            // Archived leagues (past last session)
-            acc.archived.push(league);
+            // Only show archived leagues to the creator
+            if (isCreator) {
+              acc.archived.push(league);
+            }
           } else if (isCreator) {
-            // Active leagues (user is creator)
+            // Active leagues (only for creator)
             acc.active.push(league);
           } else if (isTeamMember) {
-            // Pending leagues (user is team member but not creator)
+            // Pending leagues (for team members who aren't creators)
             acc.pending.push(league);
           }
           
