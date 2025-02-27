@@ -92,22 +92,20 @@ const CreateLeague = () => {
         ]
       };
 
+      // First, update localStorage
       existingLeagues.push(newLeague);
       localStorage.setItem("leagues", JSON.stringify(existingLeagues));
-
-      setIsLoading(false);
-
-      // Force a sync of localStorage across tabs
+      
+      // Then, dispatch storage event to force sync across tabs
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'leagues',
         newValue: JSON.stringify(existingLeagues)
       }));
-
-      // Trigger the league update event
-      window.dispatchEvent(new Event('leagueUpdate'));
-
-      // Show explanation dialog
+      
+      // Finally, show the dialog and clean up
+      setIsLoading(false);
       setShowExplanationDialog(true);
+
     } catch (error) {
       console.error("Error creating league:", error);
       toast({
@@ -117,6 +115,14 @@ const CreateLeague = () => {
       });
       setIsLoading(false);
     }
+  };
+
+  // Handle dialog close and navigation
+  const handleDialogClose = () => {
+    setShowExplanationDialog(false);
+    
+    // Force a reload of the account page to ensure fresh data
+    window.location.href = '/account';
   };
 
   return (
@@ -187,12 +193,7 @@ const CreateLeague = () => {
 
         <Dialog 
           open={showExplanationDialog} 
-          onOpenChange={(open) => {
-            setShowExplanationDialog(open);
-            if (!open) {
-              navigate("/account");
-            }
-          }}
+          onOpenChange={handleDialogClose}
         >
           <DialogContent>
             <DialogHeader>
@@ -212,10 +213,7 @@ const CreateLeague = () => {
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button onClick={() => {
-                setShowExplanationDialog(false);
-                navigate("/account");
-              }}>OK</Button>
+              <Button onClick={handleDialogClose}>OK</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -225,4 +223,3 @@ const CreateLeague = () => {
 };
 
 export default CreateLeague;
-
