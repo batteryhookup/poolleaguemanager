@@ -8,7 +8,7 @@ import { StatsManagement } from "@/components/account/StatsManagement";
 import { AccountActions } from "@/components/account/AccountActions";
 import { League } from "@/components/account/types/league";
 import { Team } from "@/components/account/types/team";
-import { isPast, parseISO } from "date-fns";
+import { isPast, parseISO, isFuture } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
 const MyAccount = () => {
@@ -40,6 +40,9 @@ const MyAccount = () => {
           const lastSession = league.schedule?.length > 0 
             ? parseISO(league.schedule[league.schedule.length - 1].date)
             : null;
+          const firstSession = league.schedule?.length > 0
+            ? parseISO(league.schedule[0].date)
+            : null;
           
           const isUserLeague = league.createdBy === userData.username;
           const isUserMember = league.teams?.some((team: Team) => 
@@ -51,8 +54,16 @@ const MyAccount = () => {
               acc.archived.push(league);
             }
           } else if (isUserLeague) {
-            acc.active.push(league);
+            // If the user created the league
+            if (firstSession && isFuture(firstSession)) {
+              // If the league hasn't started yet, put it in upcoming
+              acc.upcoming.push(league);
+            } else {
+              // If the league has started or has no schedule, put it in active
+              acc.active.push(league);
+            }
           } else if (isUserMember) {
+            // If the user is just a member, it goes to upcoming
             acc.upcoming.push(league);
           }
           
