@@ -113,11 +113,35 @@ export const useUserData = () => {
     loadUserData();
     
     // Add event listener for league updates
-    const handleLeagueUpdate = () => {
-      console.log("League update detected, reloading user data");
+    const handleLeagueUpdate = (event: Event) => {
+      console.log("League update event received:", event);
+      
+      // Check if it's a CustomEvent with detail
+      if (event instanceof CustomEvent) {
+        const { league, category, action } = event.detail;
+        console.log(`League update: ${action}, Category: ${category}`, league);
+        
+        if (action === 'create') {
+          // Immediately update the appropriate category
+          switch (category) {
+            case 'active':
+              setActiveLeagues(prev => [...prev, league]);
+              break;
+            case 'upcoming':
+              setUpcomingLeagues(prev => [...prev, league]);
+              break;
+            case 'archived':
+              setArchivedLeagues(prev => [...prev, league]);
+              break;
+          }
+        }
+      }
+      
+      // Still reload all data to ensure consistency
       loadUserData();
     };
     
+    // Handle both custom leagueUpdate event and storage events
     window.addEventListener('leagueUpdate', handleLeagueUpdate);
     window.addEventListener('storage', handleLeagueUpdate);
     
