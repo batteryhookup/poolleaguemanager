@@ -85,13 +85,8 @@ const CreateLeague = () => {
 
       existingLeagues.push(newLeague);
       localStorage.setItem("leagues", JSON.stringify(existingLeagues));
-      localStorage.setItem('lastLeagueUpdate', Date.now().toString());
-
-      // First dispatch the regular update event
-      window.dispatchEvent(new Event('leagueUpdate'));
       
-      // Then dispatch the delayed refresh event
-      window.dispatchEvent(new Event('delayedLeagueRefresh'));
+      window.dispatchEvent(new Event('leagueUpdate'));
       
       toast({
         title: "Success",

@@ -41,31 +41,6 @@ export const useUserData = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const categorizeAndSetLeagues = (allLeagues: League[], userData: any) => {
-    const now = new Date();
-    const categorizedLeagues = {
-      active: [] as League[],
-      upcoming: [] as League[],
-      archived: [] as League[]
-    };
-
-    allLeagues.forEach((league: League) => {
-      const isUserLeague = league.createdBy === userData.username;
-      const isUserMember = league.teams?.some((team: Team) => 
-        team.members?.includes(userData.username)
-      );
-
-      if (isUserLeague || isUserMember) {
-        const category = categorizeLeague(league, userData.username, now);
-        categorizedLeagues[category].push(league);
-      }
-    });
-
-    setActiveLeagues(categorizedLeagues.active);
-    setUpcomingLeagues(categorizedLeagues.upcoming);
-    setArchivedLeagues(categorizedLeagues.archived);
-  };
-
   const loadUserData = () => {
     console.log("Loading user data...");
     const currentUser = localStorage.getItem("currentUser");
@@ -80,7 +55,31 @@ export const useUserData = () => {
       setUsername(userData.username);
 
       const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-      categorizeAndSetLeagues(allLeagues, userData);
+      const now = new Date();
+      
+      const categorizedLeagues = {
+        active: [] as League[],
+        upcoming: [] as League[],
+        archived: [] as League[]
+      };
+
+      allLeagues.forEach((league: League) => {
+        const isUserLeague = league.createdBy === userData.username;
+        const isUserMember = league.teams?.some((team: Team) => 
+          team.members?.includes(userData.username)
+        );
+
+        if (isUserLeague || isUserMember) {
+          const category = categorizeLeague(league, userData.username, now);
+          categorizedLeagues[category].push(league);
+        }
+      });
+
+      console.log("Categorized leagues:", categorizedLeagues);
+
+      setActiveLeagues(categorizedLeagues.active);
+      setUpcomingLeagues(categorizedLeagues.upcoming);
+      setArchivedLeagues(categorizedLeagues.archived);
 
       const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
       const userTeams = allTeams.filter((team: Team) => 
@@ -99,27 +98,20 @@ export const useUserData = () => {
   };
 
   useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "leagues" || e.key === "lastLeagueUpdate") {
-        loadUserData();
-      }
-    };
-
     const handleLeagueUpdate = () => {
-      console.log("League update event received");
+      console.log("League update event received, reloading data");
       loadUserData();
     };
 
     loadUserData();
-    
-    window.addEventListener('storage', handleStorageChange);
     window.addEventListener('leagueUpdate', handleLeagueUpdate);
+    window.addEventListener('storage', handleLeagueUpdate);
     
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('leagueUpdate', handleLeagueUpdate);
+      window.removeEventListener('storage', handleLeagueUpdate);
     };
-  }, [navigate]);
+  }, []);
 
   return {
     activeLeagues,
@@ -129,6 +121,5 @@ export const useUserData = () => {
     username,
     setActiveLeagues,
     setTeams,
-    loadUserData, // Expose loadUserData
   };
 };
