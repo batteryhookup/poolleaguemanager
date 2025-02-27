@@ -58,9 +58,18 @@ export function LeagueManagement({ leagues, setLeagues, archivedLeagues }: Exten
   const handleAddTeam = (teamName: string) => {
     if (!selectedLeague) return;
 
+    const currentUser = localStorage.getItem("currentUser");
+    if (!currentUser) return;
+
+    const userData = JSON.parse(currentUser);
+    
     const newTeam: Team = {
       id: Date.now(),
-      name: teamName
+      name: teamName,
+      password: selectedLeague.password, // Using league's password for team
+      createdAt: new Date().toISOString(),
+      createdBy: userData.username,
+      members: [userData.username]
     };
 
     const updatedLeague = {
@@ -146,7 +155,7 @@ export function LeagueManagement({ leagues, setLeagues, archivedLeagues }: Exten
                 }}
                 onDeleteTeam={(league, team) => {
                   setSelectedLeague(league);
-                  setSelectedTeam(team);
+                  setSelectedTeam(team as Team);
                   setIsDeleteTeamDialogOpen(true);
                 }}
                 onUpdateLeague={handleUpdateLeague}
@@ -174,7 +183,7 @@ export function LeagueManagement({ leagues, setLeagues, archivedLeagues }: Exten
                   }}
                   onDeleteTeam={(league, team) => {
                     setSelectedLeague(league);
-                    setSelectedTeam(team);
+                    setSelectedTeam(team as Team);
                     setIsDeleteTeamDialogOpen(true);
                   }}
                   onUpdateLeague={handleUpdateLeague}
@@ -207,4 +216,3 @@ export function LeagueManagement({ leagues, setLeagues, archivedLeagues }: Exten
     </Card>
   );
 }
-
