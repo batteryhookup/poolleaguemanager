@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateTeamForm } from "./team/CreateTeamForm";
@@ -8,6 +9,15 @@ import { DeleteTeamDialog } from "./team/DeleteTeamDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface TeamManagementProps {
   userTeams: Team[];
@@ -298,20 +308,46 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
         onDeletePasswordChange={setDeletePassword}
       />
 
-      <DeleteTeamDialog
-        isOpen={isLeaveTeamDialogOpen}
-        onClose={() => {
-          setIsLeaveTeamDialogOpen(false);
-          setLeavePassword("");
-        }}
-        selectedTeam={teamToLeave}
-        onConfirmDelete={handleConfirmLeave}
-        deletePassword={leavePassword}
-        onDeletePasswordChange={setLeavePassword}
-        title="Leave Team"
-        description="Are you sure you want to leave this team? Please enter your account password to confirm."
-        confirmText="Leave Team"
-      />
+      <Dialog open={isLeaveTeamDialogOpen} onOpenChange={setIsLeaveTeamDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Leave Team</DialogTitle>
+            <DialogDescription>
+              Please enter your account password to confirm leaving {teamToLeave?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="leavePassword">Your Password</Label>
+              <Input
+                id="leavePassword"
+                type="password"
+                value={leavePassword}
+                onChange={(e) => setLeavePassword(e.target.value)}
+                placeholder="Enter your account password"
+              />
+            </div>
+            <div className="flex justify-end space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsLeaveTeamDialogOpen(false);
+                  setLeavePassword("");
+                  setTeamToLeave(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleConfirmLeave}
+                disabled={!leavePassword}
+              >
+                Leave Team
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
