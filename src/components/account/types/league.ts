@@ -12,6 +12,9 @@ export interface League {
   createdBy: string;
   password: string;
   teams: Team[];
+  type: 'team' | 'singles';
+  maxPlayersPerTeam?: number;
+  playersPerNight?: number;
 }
 
 export interface LeagueManagementProps {
