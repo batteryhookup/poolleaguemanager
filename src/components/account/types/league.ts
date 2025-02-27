@@ -22,3 +22,11 @@ export interface LeagueManagementProps {
   leagues: League[];
   setLeagues: React.Dispatch<React.SetStateAction<League[]>>;
 }
+
+export interface EditLeagueDialogProps {
+  league: League | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (updatedLeague: League) => void;
+}
+

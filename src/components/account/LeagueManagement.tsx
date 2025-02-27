@@ -49,6 +49,14 @@ export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps)
     });
   };
 
+  const handleUpdateLeague = (updatedLeague: League) => {
+    const updatedLeagues = leagues.map(league =>
+      league.id === updatedLeague.id ? updatedLeague : league
+    );
+    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+    setLeagues(updatedLeagues);
+  };
+
   const handleAddTeam = (teamName: string) => {
     if (!selectedLeague || !teamName.trim()) return;
 
@@ -143,6 +151,7 @@ export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps)
                   setSelectedTeam(team);
                   setIsDeleteTeamDialogOpen(true);
                 }}
+                onUpdateLeague={handleUpdateLeague}
               />
             )}
           </TabsContent>
@@ -171,3 +180,4 @@ export function LeagueManagement({ leagues, setLeagues }: LeagueManagementProps)
     </Card>
   );
 }
+
