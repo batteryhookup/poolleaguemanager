@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateTeamForm } from "./team/CreateTeamForm";
@@ -8,10 +7,18 @@ import { Team } from "./types/team";
 import { DeleteTeamDialog } from "./team/DeleteTeamDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 interface TeamManagementProps {
   userTeams: Team[];
   setUserTeams: (teams: Team[]) => void;
+}
+
+interface TeamInvite {
+  id: number;
+  teamId: number;
+  username: string;
+  status: string;
 }
 
 export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps) {
@@ -21,10 +28,24 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
   const [isLeaveTeamDialogOpen, setIsLeaveTeamDialogOpen] = useState(false);
   const [teamToLeave, setTeamToLeave] = useState<Team | null>(null);
   const [leavePassword, setLeavePassword] = useState("");
+  const [teamInvites, setTeamInvites] = useState<TeamInvite[]>([]);
   const { toast } = useToast();
 
-  // Effect to watch for team invite acceptances
   useEffect(() => {
+    const loadTeamInvites = () => {
+      const currentUser = localStorage.getItem("currentUser");
+      if (!currentUser) return;
+      
+      const username = JSON.parse(currentUser).username;
+      const allInvites = JSON.parse(localStorage.getItem("teamInvites") || "[]");
+      const pendingInvites = allInvites.filter(
+        (invite: TeamInvite) => 
+          invite.username === username && 
+          invite.status === "pending"
+      );
+      setTeamInvites(pendingInvites);
+    };
+
     const handleStorageChange = () => {
       const currentUser = localStorage.getItem("currentUser");
       if (!currentUser) return;
@@ -35,8 +56,10 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
         team.createdBy === username || team.members.includes(username)
       );
       setUserTeams(userTeams);
+      loadTeamInvites();
     };
 
+    loadTeamInvites();
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
   }, [setUserTeams]);
@@ -56,6 +79,72 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
   const handleLeaveTeam = (team: Team) => {
     setTeamToLeave(team);
     setIsLeaveTeamDialogOpen(true);
+  };
+
+  const handleAcceptInvite = (invite: TeamInvite) => {
+    const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+    const team = allTeams.find((t: Team) => t.id === invite.teamId);
+    
+    if (!team) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Team not found.",
+      });
+      return;
+    }
+
+    const updatedTeams = allTeams.map((t: Team) => {
+      if (t.id === team.id) {
+        return {
+          ...t,
+          members: [...t.members, invite.username]
+        };
+      }
+      return t;
+    });
+
+    const allInvites = JSON.parse(localStorage.getItem("teamInvites") || "[]");
+    const updatedInvites = allInvites.map((i: TeamInvite) => {
+      if (i.id === invite.id) {
+        return { ...i, status: "accepted" };
+      }
+      return i;
+    });
+
+    localStorage.setItem("teams", JSON.stringify(updatedTeams));
+    localStorage.setItem("teamInvites", JSON.stringify(updatedInvites));
+    
+    setTeamInvites(teamInvites.filter(i => i.id !== invite.id));
+    setUserTeams(updatedTeams.filter((t: Team) => 
+      t.createdBy === JSON.parse(localStorage.getItem("currentUser") || "{}").username || 
+      t.members.includes(JSON.parse(localStorage.getItem("currentUser") || "{}").username)
+    ));
+
+    window.dispatchEvent(new Event("storage"));
+
+    toast({
+      title: "Success",
+      description: "You have joined the team.",
+    });
+  };
+
+  const handleDeclineInvite = (invite: TeamInvite) => {
+    const allInvites = JSON.parse(localStorage.getItem("teamInvites") || "[]");
+    const updatedInvites = allInvites.map((i: TeamInvite) => {
+      if (i.id === invite.id) {
+        return { ...i, status: "declined" };
+      }
+      return i;
+    });
+
+    localStorage.setItem("teamInvites", JSON.stringify(updatedInvites));
+    setTeamInvites(teamInvites.filter(i => i.id !== invite.id));
+
+    toast({
+      title: "Success",
+      description: "Team invite declined.",
+    });
   };
 
   const handleConfirmLeave = async () => {
@@ -136,6 +225,41 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
         </div>
       </CardHeader>
       <CardContent>
+        {teamInvites.length > 0 && (
+          <div className="mb-6 space-y-4">
+            <h3 className="text-lg font-semibold">Team Invites</h3>
+            <div className="grid gap-4">
+              {teamInvites.map((invite) => {
+                const team = JSON.parse(localStorage.getItem("teams") || "[]")
+                  .find((t: Team) => t.id === invite.teamId);
+                return (
+                  <div key={invite.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{team?.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Invited by {team?.createdBy}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleDeclineInvite(invite)}
+                      >
+                        Decline
+                      </Button>
+                      <Button
+                        onClick={() => handleAcceptInvite(invite)}
+                      >
+                        Accept
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <Tabs defaultValue="my-teams" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="my-teams">My Teams</TabsTrigger>
