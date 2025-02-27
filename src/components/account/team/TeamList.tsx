@@ -32,9 +32,11 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
   const [isEditTeamOpen, setIsEditTeamOpen] = useState(false);
   const [isAcceptCaptainOpen, setIsAcceptCaptainOpen] = useState(false);
   const [isRemovePlayerDialogOpen, setIsRemovePlayerDialogOpen] = useState(false);
+  const [isLeaveTeamDialogOpen, setIsLeaveTeamDialogOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [removePassword, setRemovePassword] = useState("");
+  const [leaveTeamPassword, setLeaveTeamPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const { toast } = useToast();
@@ -75,6 +77,11 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
     setIsRemovePlayerDialogOpen(true);
   };
 
+  const initiateLeaveTeam = (team: Team) => {
+    setSelectedTeam(team);
+    setIsLeaveTeamDialogOpen(true);
+  };
+
   const handleRemovePlayer = () => {
     if (!selectedTeam || !selectedPlayer) return;
 
@@ -110,6 +117,28 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
       title: "Success",
       description: `${selectedPlayer} has been removed from the team.`,
     });
+  };
+
+  const handleLeaveTeam = () => {
+    if (!selectedTeam) return;
+
+    const currentUser = localStorage.getItem("currentUser");
+    if (!currentUser) return;
+
+    const userData = JSON.parse(currentUser);
+    if (leaveTeamPassword !== userData.password) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Incorrect user password.",
+      });
+      return;
+    }
+
+    onLeaveTeam(selectedTeam);
+    setIsLeaveTeamDialogOpen(false);
+    setSelectedTeam(null);
+    setLeaveTeamPassword("");
   };
 
   const onTransferCaptain = (newCaptain: string) => {
@@ -294,7 +323,7 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
                                     variant="ghost"
                                     size="icon"
                                     className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                                    onClick={() => onLeaveTeam(team)}
+                                    onClick={() => initiateLeaveTeam(team)}
                                   >
                                     <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
                                   </Button>
@@ -348,54 +377,6 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
         onTransferCaptain={onTransferCaptain}
       />
 
-      <Dialog open={isAcceptCaptainOpen} onOpenChange={setIsAcceptCaptainOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Accept Team Captain Role</DialogTitle>
-            <DialogDescription>
-              Please set a new team password to accept the captain role.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">New Team Password</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new team password"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new team password"
-              />
-            </div>
-            <div className="flex justify-end space-x-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsAcceptCaptainOpen(false);
-                  setNewPassword("");
-                  setConfirmPassword("");
-                }}
-              >
-                Cancel
-              </Button>
-              <Button onClick={submitAcceptCaptain} disabled={!newPassword || !confirmPassword}>
-                Accept & Set Password
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog 
         open={isRemovePlayerDialogOpen} 
         onOpenChange={(open) => {
@@ -443,6 +424,104 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
                 disabled={!removePassword}
               >
                 Remove Player
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog 
+        open={isLeaveTeamDialogOpen} 
+        onOpenChange={(open) => {
+          setIsLeaveTeamDialogOpen(open);
+          if (!open) {
+            setLeaveTeamPassword("");
+            setSelectedTeam(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Leave Team</DialogTitle>
+            <DialogDescription>
+              Please enter your account password to confirm leaving {selectedTeam?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="leaveTeamPassword">Your Password</Label>
+              <Input
+                id="leaveTeamPassword"
+                type="password"
+                value={leaveTeamPassword}
+                onChange={(e) => setLeaveTeamPassword(e.target.value)}
+                placeholder="Enter your account password"
+              />
+            </div>
+            <div className="flex justify-end space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsLeaveTeamDialogOpen(false);
+                  setLeaveTeamPassword("");
+                  setSelectedTeam(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleLeaveTeam}
+                disabled={!leaveTeamPassword}
+              >
+                Leave Team
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAcceptCaptainOpen} onOpenChange={setIsAcceptCaptainOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Accept Team Captain Role</DialogTitle>
+            <DialogDescription>
+              Please set a new team password to accept the captain role.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Team Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new team password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new team password"
+              />
+            </div>
+            <div className="flex justify-end space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsAcceptCaptainOpen(false);
+                  setNewPassword("");
+                  setConfirmPassword("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={submitAcceptCaptain} disabled={!newPassword || !confirmPassword}>
+                Accept & Set Password
               </Button>
             </div>
           </div>
