@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/Layout";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
@@ -41,20 +40,19 @@ const LeagueFinder = () => {
   const [joinType, setJoinType] = useState<"player" | "team">("player");
   const [selectedTeam, setSelectedTeam] = useState<string>("");
   const [userTeams, setUserTeams] = useState<Team[]>([]);
-  const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
     const storedLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     setLeagues(storedLeagues);
 
-    // Get user's teams where they are captain
     const currentUser = localStorage.getItem("currentUser");
     if (currentUser) {
       const username = JSON.parse(currentUser).username;
       const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
-      const captainTeams = allTeams.filter((team: Team) => team.createdBy === username);
-      setUserTeams(captainTeams);
+      const userTeams = allTeams.filter((team: Team) => 
+        team.createdBy === username || team.members.includes(username)
+      );
+      setUserTeams(userTeams);
     }
   }, []);
 
@@ -81,6 +79,15 @@ const LeagueFinder = () => {
 
     const username = JSON.parse(currentUser).username;
     const existingRequests = JSON.parse(localStorage.getItem("leagueRequests") || "[]");
+    
+    if (joinType === "team" && !selectedTeam) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a team to join with.",
+      });
+      return;
+    }
     
     const newRequest = {
       id: Date.now(),
@@ -288,4 +295,3 @@ const LeagueFinder = () => {
 };
 
 export default LeagueFinder;
-
