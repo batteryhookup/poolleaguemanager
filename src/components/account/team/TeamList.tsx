@@ -1,11 +1,11 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Crown, Trash2, UserPlus } from "lucide-react";
+import { Crown, Trash2, UserPlus, Pencil } from "lucide-react";
 import { Team } from "../types/team";
 import { SearchPlayerDialog } from "./SearchPlayerDialog";
 import { TransferCaptainDialog } from "./TransferCaptainDialog";
+import { EditTeamDialog } from "./EditTeamDialog";
 import {
   Tooltip,
   TooltipContent,
@@ -33,6 +33,7 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [isAcceptCaptainOpen, setIsAcceptCaptainOpen] = useState(false);
+  const [isEditTeamOpen, setIsEditTeamOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -47,6 +48,27 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
   const handleTransferCaptain = (team: Team) => {
     setSelectedTeam(team);
     setIsTransferOpen(true);
+  };
+
+  const handleEditTeam = (team: Team) => {
+    setSelectedTeam(team);
+    setIsEditTeamOpen(true);
+  };
+
+  const handleUpdateTeam = (updatedTeam: Team) => {
+    const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+    const updatedTeams = allTeams.map((t: Team) =>
+      t.id === updatedTeam.id ? updatedTeam : t
+    );
+    localStorage.setItem("teams", JSON.stringify(updatedTeams));
+
+    // Trigger storage event to refresh other tabs
+    window.dispatchEvent(new Event("storage"));
+
+    toast({
+      title: "Success",
+      description: "Team updated successfully.",
+    });
   };
 
   const onTransferCaptain = (newCaptain: string) => {
@@ -77,11 +99,6 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
 
     // Trigger storage event to refresh other tabs
     window.dispatchEvent(new Event("storage"));
-  };
-
-  const handleAcceptCaptain = (team: Team) => {
-    setSelectedTeam(team);
-    setIsAcceptCaptainOpen(true);
   };
 
   const submitAcceptCaptain = () => {
@@ -150,7 +167,6 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
     );
   }
 
-  // Get pending transfers from localStorage
   const pendingTransfers = JSON.parse(localStorage.getItem("pendingCaptainTransfers") || "[]");
 
   return (
@@ -224,6 +240,13 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
                 <div className="flex gap-2">
                   {isCreator && (
                     <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEditTeam(team)}
+                      >
+                        <Pencil className="h-4 w-4 text-muted-foreground" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -332,6 +355,16 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <EditTeamDialog
+        isOpen={isEditTeamOpen}
+        onClose={() => {
+          setIsEditTeamOpen(false);
+          setSelectedTeam(null);
+        }}
+        team={selectedTeam}
+        onUpdateTeam={handleUpdateTeam}
+      />
     </TooltipProvider>
   );
 }
