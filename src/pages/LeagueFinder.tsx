@@ -1,3 +1,4 @@
+
 import { Layout } from "@/components/Layout";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
@@ -40,6 +41,8 @@ const LeagueFinder = () => {
   const [joinType, setJoinType] = useState<"player" | "team">("player");
   const [selectedTeam, setSelectedTeam] = useState<string>("");
   const [userTeams, setUserTeams] = useState<Team[]>([]);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     const storedLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
