@@ -1,5 +1,6 @@
 
-import { League, Team } from "../types/league";
+import { League } from "../types/league";
+import { Team } from "../types/team";
 import { toast } from "@/hooks/use-toast";
 
 export const createLeague = (newLeague: League, leagues: League[], setLeagues: (leagues: League[]) => void) => {
@@ -168,7 +169,7 @@ export const updateLeague = (
     league.id === updatedLeague.id ? updatedLeague : league
   );
   localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-  setLeagues(prevLeagues => prevLeagues.map(league =>
+  setLeagues(leagues.map(league =>
     league.id === updatedLeague.id ? updatedLeague : league
   ));
 };
