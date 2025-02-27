@@ -87,8 +87,12 @@ const CreateLeague = () => {
       existingLeagues.push(newLeague);
       localStorage.setItem("leagues", JSON.stringify(existingLeagues));
 
-      // Dispatch a custom event to notify components about the league update
-      window.dispatchEvent(new CustomEvent('leagueUpdate', { detail: newLeague }));
+      // Dispatch leagueUpdate event with the new league data
+      window.dispatchEvent(new CustomEvent('leagueUpdate', { 
+        detail: newLeague,
+        bubbles: true,
+        composed: true 
+      }));
 
       toast({
         title: "Success",
