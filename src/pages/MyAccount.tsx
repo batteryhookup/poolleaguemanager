@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/Layout";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -37,34 +36,33 @@ const MyAccount = () => {
       // Process all leagues
       const { active, upcoming, archived } = allLeagues.reduce(
         (acc: { active: League[]; upcoming: League[]; archived: League[] }, league: League) => {
-          const lastSession = league.schedule?.length > 0 
-            ? parseISO(league.schedule[league.schedule.length - 1].date)
-            : null;
           const firstSession = league.schedule?.length > 0
             ? parseISO(league.schedule[0].date)
             : null;
+          const lastSession = league.schedule?.length > 0 
+            ? parseISO(league.schedule[league.schedule.length - 1].date)
+            : null;
           
+          // Check if user is creator or member of any team in the league
           const isUserLeague = league.createdBy === userData.username;
           const isUserMember = league.teams?.some((team: Team) => 
             team.members?.includes(userData.username)
           );
 
-          if (lastSession && isPast(lastSession)) {
-            if (isUserLeague) {
+          // Only process leagues where user is creator or member
+          if (isUserLeague || isUserMember) {
+            // If the league has ended (last session is in the past)
+            if (lastSession && isPast(lastSession)) {
               acc.archived.push(league);
             }
-          } else if (isUserLeague) {
-            // If the user created the league
-            if (firstSession && isFuture(firstSession)) {
-              // If the league hasn't started yet, put it in upcoming
+            // If the league hasn't started yet (first session is in the future)
+            else if (firstSession && isFuture(firstSession)) {
               acc.upcoming.push(league);
-            } else {
-              // If the league has started or has no schedule, put it in active
+            }
+            // If the league has started but not ended, or has no schedule
+            else {
               acc.active.push(league);
             }
-          } else if (isUserMember) {
-            // If the user is just a member, it goes to upcoming
-            acc.upcoming.push(league);
           }
           
           return acc;
