@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/Layout";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -33,16 +32,10 @@ const MyAccount = () => {
       // Get all leagues from localStorage
       const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
       
-      // Filter leagues where the user is either the creator or a member of a team in the league
-      const userLeagues = allLeagues.filter((league: League) => {
-        // Check if user is the creator
-        if (league.createdBy === userData.username) return true;
-        
-        // Check if user is a member of any team in the league
-        return league.teams?.some((team: Team) => 
-          team.members.includes(userData.username)
-        );
-      }).map((league: League) => ({
+      // Only get leagues created by the current user
+      const userLeagues = allLeagues.filter((league: League) => 
+        league.createdBy === userData.username
+      ).map((league: League) => ({
         ...league,
         teams: league.teams || [],
         type: league.type || 'singles',
@@ -68,7 +61,7 @@ const MyAccount = () => {
       setActiveLeagues(active);
       setArchivedLeagues(archived);
 
-      // Filter teams
+      // Filter teams - keep showing all teams where user is creator or member
       const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
       const userTeams = allTeams.filter((team: Team) => 
         team.createdBy === userData.username || team.members.includes(userData.username)
