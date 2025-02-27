@@ -1,10 +1,9 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Crown, Trash2, UserPlus, Pencil } from "lucide-react";
+import { Crown, Trash2, Pencil } from "lucide-react";
 import { Team } from "../types/team";
-import { SearchPlayerDialog } from "./SearchPlayerDialog";
-import { TransferCaptainDialog } from "./TransferCaptainDialog";
 import { EditTeamDialog } from "./EditTeamDialog";
 import {
   Tooltip,
@@ -30,25 +29,13 @@ interface TeamListProps {
 }
 
 export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isTransferOpen, setIsTransferOpen] = useState(false);
-  const [isAcceptCaptainOpen, setIsAcceptCaptainOpen] = useState(false);
   const [isEditTeamOpen, setIsEditTeamOpen] = useState(false);
+  const [isAcceptCaptainOpen, setIsAcceptCaptainOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const { toast } = useToast();
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-
-  const handleAddPlayers = (team: Team) => {
-    setSelectedTeam(team);
-    setIsSearchOpen(true);
-  };
-
-  const handleTransferCaptain = (team: Team) => {
-    setSelectedTeam(team);
-    setIsTransferOpen(true);
-  };
 
   const handleEditTeam = (team: Team) => {
     setSelectedTeam(team);
@@ -91,10 +78,15 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
     });
     localStorage.setItem("notifications", JSON.stringify(notifications));
 
-    setIsTransferOpen(false);
+    setIsEditTeamOpen(false);
     setSelectedTeam(null);
 
     window.dispatchEvent(new Event("storage"));
+
+    toast({
+      title: "Success",
+      description: `Team captain transfer request sent to ${newCaptain}`,
+    });
   };
 
   const handleAcceptCaptain = (team: Team) => {
@@ -234,40 +226,38 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  {isCreator && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditTeam(team)}
-                      >
-                        <Pencil className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleAddPlayers(team)}
-                      >
-                        <UserPlus className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleTransferCaptain(team)}
-                      >
-                        <Crown className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDeleteTeam(team)}
-                      >
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </>
-                  )}
-                </div>
+                {isCreator && (
+                  <div className="flex gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditTeam(team)}
+                        >
+                          <Pencil className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Edit Team</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDeleteTeam(team)}
+                        >
+                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Delete Team</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
               </CardHeader>
               {pendingInvites.length > 0 && (
                 <CardContent>
@@ -286,22 +276,14 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
         })}
       </div>
 
-      <SearchPlayerDialog
-        isOpen={isSearchOpen}
+      <EditTeamDialog
+        isOpen={isEditTeamOpen}
         onClose={() => {
-          setIsSearchOpen(false);
+          setIsEditTeamOpen(false);
           setSelectedTeam(null);
         }}
         team={selectedTeam}
-      />
-
-      <TransferCaptainDialog
-        isOpen={isTransferOpen}
-        onClose={() => {
-          setIsTransferOpen(false);
-          setSelectedTeam(null);
-        }}
-        team={selectedTeam}
+        onUpdateTeam={handleUpdateTeam}
         onTransferCaptain={onTransferCaptain}
       />
 
@@ -352,16 +334,6 @@ export function TeamList({ teams, onDeleteTeam, onLeaveTeam }: TeamListProps) {
           </div>
         </DialogContent>
       </Dialog>
-
-      <EditTeamDialog
-        isOpen={isEditTeamOpen}
-        onClose={() => {
-          setIsEditTeamOpen(false);
-          setSelectedTeam(null);
-        }}
-        team={selectedTeam}
-        onUpdateTeam={handleUpdateTeam}
-      />
     </TooltipProvider>
   );
 }
