@@ -4,10 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserCircle2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { initializeTestData } from "@/utils/testDataInit";
 
 interface User {
   username: string;
@@ -25,11 +24,6 @@ export const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Initialize clean slate when component mounts
-  useEffect(() => {
-    initializeTestData();
-  }, []);
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
