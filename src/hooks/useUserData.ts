@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "./use-toast";
@@ -118,9 +119,11 @@ export const useUserData = () => {
     };
     
     window.addEventListener('leagueUpdate', handleLeagueUpdate);
+    window.addEventListener('storage', handleLeagueUpdate);
     
     return () => {
       window.removeEventListener('leagueUpdate', handleLeagueUpdate);
+      window.removeEventListener('storage', handleLeagueUpdate);
     };
   }, [navigate]);
 

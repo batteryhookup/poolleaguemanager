@@ -31,6 +31,9 @@ export const deleteLeague = (
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
     setLeagues(leagues.filter(league => league.id !== selectedLeague.id));
     
+    // Dispatch the leagueUpdate event
+    window.dispatchEvent(new Event('leagueUpdate'));
+    
     toast({
       title: "Success",
       description: "League deleted successfully!",
@@ -89,6 +92,9 @@ export const addTeam = (
       league.id === updatedLeague.id ? updatedLeague : league
     ));
 
+    // Dispatch the leagueUpdate event
+    window.dispatchEvent(new Event('leagueUpdate'));
+
     toast({
       title: "Success",
       description: "Team added successfully!",
@@ -143,6 +149,9 @@ export const deleteTeam = (
       league.id === updatedLeague.id ? updatedLeague : league
     ));
 
+    // Dispatch the leagueUpdate event
+    window.dispatchEvent(new Event('leagueUpdate'));
+
     toast({
       title: "Success",
       description: "Team deleted successfully!",
@@ -172,4 +181,7 @@ export const updateLeague = (
   setLeagues(leagues.map(league =>
     league.id === updatedLeague.id ? updatedLeague : league
   ));
+  
+  // Dispatch the leagueUpdate event
+  window.dispatchEvent(new Event('leagueUpdate'));
 };
