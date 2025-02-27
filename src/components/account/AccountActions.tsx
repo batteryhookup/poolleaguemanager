@@ -25,10 +25,6 @@ export function AccountActions() {
   const handleLogout = () => {
     localStorage.removeItem("currentUser");
     navigate("/");
-    toast({
-      title: "Success",
-      description: "Logged out successfully!",
-    });
   };
 
   const handleDeleteAccount = () => {
@@ -59,11 +55,6 @@ export function AccountActions() {
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
 
     localStorage.removeItem("currentUser");
-
-    toast({
-      title: "Success",
-      description: "Your account has been deleted.",
-    });
     
     navigate("/");
   };

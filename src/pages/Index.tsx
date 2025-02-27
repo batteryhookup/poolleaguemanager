@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Layout } from "@/components/Layout";
@@ -47,10 +48,6 @@ const Index = () => {
       if (user) {
         localStorage.setItem("currentUser", JSON.stringify(user));
         navigate("/account");
-        toast({
-          title: "Success",
-          description: "Logged in successfully!",
-        });
       } else {
         toast({
           variant: "destructive",
@@ -76,10 +73,6 @@ const Index = () => {
       localStorage.setItem("currentUser", JSON.stringify(newUser));
       
       navigate("/account");
-      toast({
-        title: "Success",
-        description: "Account created successfully!",
-      });
     }
   };
 
