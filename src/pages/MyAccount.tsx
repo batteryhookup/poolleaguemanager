@@ -9,6 +9,7 @@ import { AccountActions } from "@/components/account/AccountActions";
 import { League } from "@/components/account/types/league";
 import { Team } from "@/components/account/types/team";
 import { isPast, parseISO } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 const MyAccount = () => {
   const [activeLeagues, setActiveLeagues] = useState<League[]>([]);
@@ -16,53 +17,76 @@ const MyAccount = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [username, setUsername] = useState("");
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  useEffect(() => {
+  const loadUserData = () => {
     const currentUser = localStorage.getItem("currentUser");
     if (!currentUser) {
       navigate("/");
       return;
     }
 
-    const userData = JSON.parse(currentUser);
-    setUsername(userData.username);
+    try {
+      const userData = JSON.parse(currentUser);
+      setUsername(userData.username);
 
-    // Filter leagues and separate active from archived
-    const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-    const userLeagues = allLeagues.filter(
-      (league: League) => league.createdBy === userData.username
-    ).map((league: League) => ({
-      ...league,
-      teams: league.teams || [],
-      type: league.type || 'singles',
-    }));
+      // Get all leagues from localStorage
+      const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+      
+      // Filter leagues where the user is either the creator or a member of a team in the league
+      const userLeagues = allLeagues.filter((league: League) => {
+        // Check if user is the creator
+        if (league.createdBy === userData.username) return true;
+        
+        // Check if user is a member of any team in the league
+        return league.teams?.some((team: Team) => 
+          team.members.includes(userData.username)
+        );
+      }).map((league: League) => ({
+        ...league,
+        teams: league.teams || [],
+        type: league.type || 'singles',
+      }));
 
-    // Separate active and archived leagues
-    const { active, archived } = userLeagues.reduce(
-      (acc: { active: League[]; archived: League[] }, league: League) => {
-        const lastSession = league.schedule?.length > 0 
-          ? parseISO(league.schedule[league.schedule.length - 1].date)
-          : null;
+      // Separate active and archived leagues
+      const { active, archived } = userLeagues.reduce(
+        (acc: { active: League[]; archived: League[] }, league: League) => {
+          const lastSession = league.schedule?.length > 0 
+            ? parseISO(league.schedule[league.schedule.length - 1].date)
+            : null;
 
-        if (lastSession && isPast(lastSession)) {
-          acc.archived.push(league);
-        } else {
-          acc.active.push(league);
-        }
-        return acc;
-      },
-      { active: [], archived: [] }
-    );
+          if (lastSession && isPast(lastSession)) {
+            acc.archived.push(league);
+          } else {
+            acc.active.push(league);
+          }
+          return acc;
+        },
+        { active: [], archived: [] }
+      );
 
-    setActiveLeagues(active);
-    setArchivedLeagues(archived);
+      setActiveLeagues(active);
+      setArchivedLeagues(archived);
 
-    // Filter teams
-    const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
-    const userTeams = allTeams.filter((team: Team) => 
-      team.createdBy === userData.username || team.members.includes(userData.username)
-    );
-    setTeams(userTeams);
+      // Filter teams
+      const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+      const userTeams = allTeams.filter((team: Team) => 
+        team.createdBy === userData.username || team.members.includes(userData.username)
+      );
+      setTeams(userTeams);
+    } catch (error) {
+      console.error("Error loading user data:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load your leagues and teams. Please try logging in again.",
+      });
+      navigate("/");
+    }
+  };
+
+  useEffect(() => {
+    loadUserData();
   }, [navigate]);
 
   return (
