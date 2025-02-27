@@ -46,7 +46,16 @@ export function EditLeagueDialog({
 
     let updatedLeague = { ...editedLeague };
 
+    // Only update the password if the user is changing it and both new passwords match
     if (isChangingPassword) {
+      if (!newPassword) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please enter a new password",
+        });
+        return;
+      }
       if (newPassword !== confirmNewPassword) {
         toast({
           variant: "destructive",
@@ -220,4 +229,3 @@ export function EditLeagueDialog({
     </Dialog>
   );
 }
-
