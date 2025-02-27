@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateTeamForm } from "./team/CreateTeamForm";
 import { TeamList } from "./team/TeamList";
@@ -18,7 +18,28 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
+  const [isLeaveTeamDialogOpen, setIsLeaveTeamDialogOpen] = useState(false);
+  const [teamToLeave, setTeamToLeave] = useState<Team | null>(null);
+  const [leavePassword, setLeavePassword] = useState("");
   const { toast } = useToast();
+
+  // Effect to watch for team invite acceptances
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const currentUser = localStorage.getItem("currentUser");
+      if (!currentUser) return;
+      
+      const username = JSON.parse(currentUser).username;
+      const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+      const userTeams = allTeams.filter((team: Team) => 
+        team.createdBy === username || team.members.includes(username)
+      );
+      setUserTeams(userTeams);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [setUserTeams]);
 
   const handleCreateTeam = (newTeam: Team) => {
     const existingTeams = JSON.parse(localStorage.getItem("teams") || "[]");
@@ -30,6 +51,53 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
   const handleDeleteTeam = (team: Team) => {
     setTeamToDelete(team);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleLeaveTeam = (team: Team) => {
+    setTeamToLeave(team);
+    setIsLeaveTeamDialogOpen(true);
+  };
+
+  const handleConfirmLeave = async () => {
+    if (!teamToLeave) return;
+
+    const currentUser = localStorage.getItem("currentUser");
+    if (!currentUser) return;
+
+    const userData = JSON.parse(currentUser);
+    if (leavePassword !== userData.password) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Incorrect password.",
+      });
+      return;
+    }
+
+    const existingTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+    const updatedTeams = existingTeams.map((t: Team) => {
+      if (t.id === teamToLeave.id) {
+        return {
+          ...t,
+          members: t.members.filter((member: string) => member !== userData.username)
+        };
+      }
+      return t;
+    });
+
+    localStorage.setItem("teams", JSON.stringify(updatedTeams));
+    setUserTeams(userTeams.filter(t => 
+      t.id !== teamToLeave.id || t.createdBy === userData.username
+    ));
+
+    setIsLeaveTeamDialogOpen(false);
+    setTeamToLeave(null);
+    setLeavePassword("");
+
+    toast({
+      title: "Success",
+      description: "You have left the team.",
+    });
   };
 
   const handleConfirmDelete = (password: string) => {
@@ -74,7 +142,11 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
             <TabsTrigger value="create-team">Create Team</TabsTrigger>
           </TabsList>
           <TabsContent value="my-teams" className="space-y-4">
-            <TeamList teams={userTeams} onDeleteTeam={handleDeleteTeam} />
+            <TeamList 
+              teams={userTeams} 
+              onDeleteTeam={handleDeleteTeam}
+              onLeaveTeam={handleLeaveTeam}
+            />
           </TabsContent>
           <TabsContent value="create-team">
             <CreateTeamForm 
@@ -100,6 +172,21 @@ export function TeamManagement({ userTeams, setUserTeams }: TeamManagementProps)
         onConfirmDelete={handleConfirmDelete}
         deletePassword={deletePassword}
         onDeletePasswordChange={setDeletePassword}
+      />
+
+      <DeleteTeamDialog
+        isOpen={isLeaveTeamDialogOpen}
+        onClose={() => {
+          setIsLeaveTeamDialogOpen(false);
+          setLeavePassword("");
+        }}
+        selectedTeam={teamToLeave}
+        onConfirmDelete={handleConfirmLeave}
+        deletePassword={leavePassword}
+        onDeletePasswordChange={setLeavePassword}
+        title="Leave Team"
+        description="Are you sure you want to leave this team? Please enter your account password to confirm."
+        confirmText="Leave Team"
       />
     </Card>
   );
