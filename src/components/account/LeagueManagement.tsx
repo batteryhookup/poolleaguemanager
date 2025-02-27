@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,7 +27,7 @@ export function LeagueManagement({ leagues, pendingLeagues, setLeagues, archived
     const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     const updatedLeagues = [...existingLeagues, newLeague];
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-    setLeagues(leagues => [...leagues, newLeague]);
+    setLeagues([...leagues, newLeague]);
   };
 
   const handleDeleteLeague = (password: string) => {
@@ -43,17 +42,34 @@ export function LeagueManagement({ leagues, pendingLeagues, setLeagues, archived
       return;
     }
 
-    const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-    const updatedLeagues = existingLeagues.filter((league: League) => league.id !== selectedLeague.id);
-    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-    setLeagues(leagues => leagues.filter(league => league.id !== selectedLeague.id));
-    setSelectedLeague(null);
-    setIsDeleteDialogOpen(false);
+    try {
+      // Get ALL leagues from localStorage
+      const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+      
+      // Remove the selected league
+      const updatedLeagues = existingLeagues.filter((league: League) => league.id !== selectedLeague.id);
+      
+      // Update localStorage with ALL leagues
+      localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
 
-    toast({
-      title: "Success",
-      description: "League deleted successfully!",
-    });
+      // Update state - only update active leagues since we're in MyAccount
+      setLeagues(leagues.filter(league => league.id !== selectedLeague.id));
+      
+      setSelectedLeague(null);
+      setIsDeleteDialogOpen(false);
+
+      toast({
+        title: "Success",
+        description: "League deleted successfully!",
+      });
+    } catch (error) {
+      console.error("Error deleting league:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete league. Please try again.",
+      });
+    }
   };
 
   const handleAddTeam = (teamName: string) => {
@@ -67,24 +83,53 @@ export function LeagueManagement({ leagues, pendingLeagues, setLeagues, archived
     const newTeam: Team = {
       id: Date.now(),
       name: teamName,
-      password: selectedLeague.password, // Using league's password for team
+      password: selectedLeague.password,
       createdAt: new Date().toISOString(),
       createdBy: userData.username,
       members: [userData.username]
     };
 
-    const updatedLeague = {
-      ...selectedLeague,
-      teams: [...(selectedLeague.teams || []), newTeam]
-    };
+    try {
+      // Get ALL leagues
+      const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+      
+      // Find and update the specific league
+      const updatedLeagues = allLeagues.map((league: League) => 
+        league.id === selectedLeague.id
+          ? {
+              ...league,
+              teams: [...(league.teams || []), newTeam]
+            }
+          : league
+      );
 
-    handleUpdateLeague(updatedLeague);
-    setIsAddTeamDialogOpen(false);
+      // Update localStorage with ALL leagues
+      localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
 
-    toast({
-      title: "Success",
-      description: "Team added successfully!",
-    });
+      // Update the state for the specific league
+      const updatedLeague = {
+        ...selectedLeague,
+        teams: [...(selectedLeague.teams || []), newTeam]
+      };
+
+      setLeagues(leagues.map(league =>
+        league.id === updatedLeague.id ? updatedLeague : league
+      ));
+
+      setIsAddTeamDialogOpen(false);
+
+      toast({
+        title: "Success",
+        description: "Team added successfully!",
+      });
+    } catch (error) {
+      console.error("Error adding team:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add team. Please try again.",
+      });
+    }
   };
 
   const handleDeleteTeam = (password: string) => {
@@ -99,19 +144,48 @@ export function LeagueManagement({ leagues, pendingLeagues, setLeagues, archived
       return;
     }
 
-    const updatedLeague = {
-      ...selectedLeague,
-      teams: selectedLeague.teams.filter(team => team.id !== selectedTeam.id)
-    };
+    try {
+      // Get ALL leagues
+      const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+      
+      // Find and update the specific league
+      const updatedLeagues = allLeagues.map((league: League) => 
+        league.id === selectedLeague.id
+          ? {
+              ...league,
+              teams: league.teams.filter(team => team.id !== selectedTeam.id)
+            }
+          : league
+      );
 
-    handleUpdateLeague(updatedLeague);
-    setSelectedTeam(null);
-    setIsDeleteTeamDialogOpen(false);
+      // Update localStorage with ALL leagues
+      localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
 
-    toast({
-      title: "Success",
-      description: "Team deleted successfully!",
-    });
+      // Update state for the specific league
+      const updatedLeague = {
+        ...selectedLeague,
+        teams: selectedLeague.teams.filter(team => team.id !== selectedTeam.id)
+      };
+
+      setLeagues(leagues.map(league =>
+        league.id === updatedLeague.id ? updatedLeague : league
+      ));
+
+      setSelectedTeam(null);
+      setIsDeleteTeamDialogOpen(false);
+
+      toast({
+        title: "Success",
+        description: "Team deleted successfully!",
+      });
+    } catch (error) {
+      console.error("Error deleting team:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete team. Please try again.",
+      });
+    }
   };
 
   const handleUpdateLeague = (updatedLeague: League) => {
