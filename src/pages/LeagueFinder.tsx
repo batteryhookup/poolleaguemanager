@@ -45,9 +45,11 @@ const LeagueFinder = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const storedLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-    setLeagues(storedLeagues);
+    // Simply get all leagues without any filtering
+    const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+    setLeagues(allLeagues);
 
+    // Still load user teams for join functionality
     const currentUser = localStorage.getItem("currentUser");
     if (currentUser) {
       const username = JSON.parse(currentUser).username;
