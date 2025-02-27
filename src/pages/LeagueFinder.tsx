@@ -12,13 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
-
-interface League {
-  id: number;
-  name: string;
-  location: string;
-  createdAt: string;
-}
+import { League } from "@/components/account/types/league";
 
 const LeagueFinder = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
@@ -67,7 +61,8 @@ const LeagueFinder = () => {
               <TableRow>
                 <TableHead>League Name</TableHead>
                 <TableHead>Location</TableHead>
-                <TableHead>Created</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Team Details</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
@@ -76,8 +71,13 @@ const LeagueFinder = () => {
                 <TableRow key={league.id}>
                   <TableCell className="font-medium">{league.name}</TableCell>
                   <TableCell>{league.location}</TableCell>
+                  <TableCell className="capitalize">{league.type}</TableCell>
                   <TableCell>
-                    {new Date(league.createdAt).toLocaleDateString()}
+                    {league.type === 'team' && (
+                      <span className="text-sm text-muted-foreground">
+                        {league.maxPlayersPerTeam} players per team, {league.playersPerNight} playing per night
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm">
@@ -88,7 +88,7 @@ const LeagueFinder = () => {
               ))}
               {sortedLeagues.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-6">
+                  <TableCell colSpan={5} className="text-center py-6">
                     No leagues found. Try a different search term or create a new league.
                   </TableCell>
                 </TableRow>
@@ -102,4 +102,3 @@ const LeagueFinder = () => {
 };
 
 export default LeagueFinder;
-
