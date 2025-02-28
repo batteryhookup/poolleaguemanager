@@ -17,7 +17,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter basename="/poolleaguemanager">
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/leagues/new" element={<CreateLeague />} />
