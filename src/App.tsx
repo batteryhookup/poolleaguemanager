@@ -7,7 +7,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
-import Index from "./pages/Index";
+import Register from './pages/Register';
 import NotFound from "./pages/NotFound";
 import CreateLeague from "./pages/CreateLeague";
 import LeagueFinder from "./pages/LeagueFinder";
@@ -41,6 +41,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/leagues/new" element={<CreateLeague />} />
             <Route path="/leagues/find" element={<LeagueFinder />} />

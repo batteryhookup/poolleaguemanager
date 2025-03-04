@@ -25,6 +25,15 @@ export default function Home() {
           >
             Find a League
           </button>
+          <div className="mt-4 text-gray-400">
+            Don't have an account?{' '}
+            <button
+              onClick={() => navigate('/register')}
+              className="text-blue-500 hover:text-blue-400 underline"
+            >
+              Register here
+            </button>
+          </div>
         </div>
       </div>
     </div>
