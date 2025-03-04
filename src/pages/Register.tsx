@@ -72,31 +72,58 @@ export default function Register() {
 
     setIsLoading(true);
     try {
+      console.log('Attempting to register with:', {
+        username: formData.username,
+        email: formData.email,
+      });
+
       const response = await fetch('https://pool-league-manager-backend.onrender.com/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           username: formData.username,
           email: formData.email,
           password: formData.password
         }),
+        credentials: 'include'
       });
 
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Registration failed');
+        throw new Error(data.message || 'Registration failed');
       }
 
       toast.success('Registration successful! Please log in.');
-      navigate('/login');
+      setTimeout(() => {
+        navigate('/login');
+      }, 1500); // Give time for the success message to be seen
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to register');
-      if (error instanceof Error && error.message.includes('username')) {
-        setErrors(prev => ({ ...prev, username: error.message }));
-      } else if (error instanceof Error && error.message.includes('email')) {
-        setErrors(prev => ({ ...prev, email: error.message }));
+      console.error('Registration error:', error);
+      let errorMessage = 'Failed to register';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error instanceof Response) {
+        try {
+          const data = await error.json();
+          errorMessage = data.message || 'Registration failed';
+        } catch {
+          errorMessage = `Server error: ${error.status}`;
+        }
+      }
+      
+      toast.error(errorMessage);
+      
+      if (errorMessage.toLowerCase().includes('username')) {
+        setErrors(prev => ({ ...prev, username: errorMessage }));
+      } else if (errorMessage.toLowerCase().includes('email')) {
+        setErrors(prev => ({ ...prev, email: errorMessage }));
       }
     } finally {
       setIsLoading(false);
