@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export default function Login() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -10,6 +12,7 @@ export default function Login() {
     username: '',
     password: '',
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -26,18 +29,21 @@ export default function Login() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors = {
       username: '',
       password: ''
     };
 
+    // Validation
     if (!formData.username.trim()) {
       newErrors.username = 'Username is required';
     }
     if (!formData.password) {
       newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
     if (newErrors.username || newErrors.password) {
@@ -45,8 +51,36 @@ export default function Login() {
       return;
     }
 
-    // TODO: Add login functionality
-    console.log('Form submitted:', formData);
+    setIsLoading(true);
+    try {
+      // TODO: Replace with actual API call
+      const response = await fetch('https://pool-league-manager-backend.onrender.com/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid username or password');
+      }
+
+      const data = await response.json();
+      // Store the token
+      localStorage.setItem('token', data.token);
+      
+      toast.success('Successfully logged in!');
+      navigate('/account'); // Redirect to account page
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to login');
+      setErrors({
+        username: 'Invalid username or password',
+        password: 'Invalid username or password'
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -73,6 +107,7 @@ export default function Login() {
                   errors.username ? 'border-red-500' : 'border-gray-600'
                 } rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter your username"
+                disabled={isLoading}
               />
               {errors.username && (
                 <p className="mt-1 text-sm text-red-500">{errors.username}</p>
@@ -92,6 +127,7 @@ export default function Login() {
                   errors.password ? 'border-red-500' : 'border-gray-600'
                 } rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder="Enter your password"
+                disabled={isLoading}
               />
               {errors.password && (
                 <p className="mt-1 text-sm text-red-500">{errors.password}</p>
@@ -102,9 +138,12 @@ export default function Login() {
           <div>
             <button
               type="submit"
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={isLoading}
+              className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
             >
-              Sign in
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
         </form>
