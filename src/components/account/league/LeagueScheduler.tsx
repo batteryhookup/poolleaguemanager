@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,22 +12,26 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { format, addWeeks, isSameDay, parseISO } from "date-fns";
-import { LeagueSession } from "../types/league";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Clock, Trash2 } from "lucide-react";
 
 interface LeagueSchedulerProps {
-  sessions: LeagueSession[];
-  onSessionsChange: (sessions: LeagueSession[]) => void;
+  onScheduleChange: (schedule: { date: string; startTime: string; endTime: string; }[]) => void;
+  initialSchedule?: { date: string; startTime: string; endTime: string; }[];
 }
 
-export function LeagueScheduler({ sessions, onSessionsChange }: LeagueSchedulerProps) {
+export function LeagueScheduler({ onScheduleChange, initialSchedule = [] }: LeagueSchedulerProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [showTimeDialog, setShowTimeDialog] = useState(false);
   const [startTime, setStartTime] = useState("19:00");
   const [endTime, setEndTime] = useState("22:00");
   const [showRecurringDialog, setShowRecurringDialog] = useState(false);
   const [weeks, setWeeks] = useState("8");
+  const [schedule, setSchedule] = useState<{ date: string; startTime: string; endTime: string; }[]>(initialSchedule);
+
+  useEffect(() => {
+    setSchedule(initialSchedule);
+  }, [initialSchedule]);
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
@@ -39,7 +42,7 @@ export function LeagueScheduler({ sessions, onSessionsChange }: LeagueSchedulerP
   const handleAddSession = (recurring: boolean = false) => {
     if (!selectedDate) return;
 
-    let newSessions = [...sessions];
+    let newSchedule = [...schedule];
     const baseSession = {
       date: format(selectedDate, "yyyy-MM-dd"),
       startTime,
@@ -50,30 +53,37 @@ export function LeagueScheduler({ sessions, onSessionsChange }: LeagueSchedulerP
       const numWeeks = parseInt(weeks);
       for (let i = 0; i < numWeeks; i++) {
         const date = addWeeks(selectedDate, i);
-        newSessions.push({
+        newSchedule.push({
           ...baseSession,
           date: format(date, "yyyy-MM-dd"),
         });
       }
     } else {
-      newSessions.push(baseSession);
+      newSchedule.push(baseSession);
     }
 
     // Sort sessions by date
-    newSessions.sort((a, b) => a.date.localeCompare(b.date));
-    onSessionsChange(newSessions);
+    newSchedule.sort((a, b) => a.date.localeCompare(b.date));
+    
+    console.log('Adding session(s):', newSchedule);
+    // Update both local state and parent component
+    setSchedule(newSchedule);
+    onScheduleChange(newSchedule);
+    
+    // Reset dialogs and selected date
     setShowTimeDialog(false);
     setShowRecurringDialog(false);
     setSelectedDate(undefined);
   };
 
   const removeSession = (sessionDate: string) => {
-    const newSessions = sessions.filter(session => session.date !== sessionDate);
-    onSessionsChange(newSessions);
+    const newSchedule = schedule.filter(session => session.date !== sessionDate);
+    setSchedule(newSchedule);
+    onScheduleChange(newSchedule);
   };
 
   const isDateSelected = (date: Date) => {
-    return sessions.some(session => 
+    return schedule.some(session => 
       isSameDay(parseISO(session.date), date)
     );
   };
@@ -96,10 +106,10 @@ export function LeagueScheduler({ sessions, onSessionsChange }: LeagueSchedulerP
           <ScrollArea className="h-[350px] rounded-md border p-4">
             <div className="space-y-2">
               <h4 className="font-medium">Scheduled Sessions</h4>
-              {sessions.length === 0 ? (
+              {schedule.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No sessions scheduled</p>
               ) : (
-                sessions.map((session) => (
+                schedule.map((session) => (
                   <div
                     key={session.date}
                     className="flex items-center justify-between p-2 rounded-lg border"

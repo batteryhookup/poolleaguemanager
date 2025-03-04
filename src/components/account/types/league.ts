@@ -1,28 +1,34 @@
+import { Team } from "./team";
 
-export interface Team {
-  id: number;
-  name: string;
-}
-
-export interface LeagueSession {
+export interface LeagueSchedule {
   date: string;
   startTime: string;
   endTime: string;
 }
 
-export interface League {
+export interface LeagueBase {
   id: number;
   name: string;
-  location: string;
-  createdAt: string;
   createdBy: string;
+  createdAt: string;
+}
+
+export interface LeagueSession extends LeagueBase {
+  parentLeagueId: number;
+  sessionName: string;
+  location: string;
   password: string;
   teams: Team[];
   type: 'team' | 'singles';
   maxPlayersPerTeam?: number;
   playersPerNight?: number;
   gameType: string;
-  schedule: LeagueSession[];
+  schedule: LeagueSchedule[];
+}
+
+export interface League extends LeagueBase {
+  sessions: LeagueSession[];
+  password: string;  // League-level password for deleting the entire league
 }
 
 export interface LeagueManagementProps {
@@ -32,7 +38,7 @@ export interface LeagueManagementProps {
 
 export interface EditLeagueDialogProps {
   league: League | null;
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onSave: (updatedLeague: League) => void;
 }

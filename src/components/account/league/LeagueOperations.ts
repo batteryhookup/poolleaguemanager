@@ -1,21 +1,58 @@
-
-import { League } from "../types/league";
+import { League, LeagueSession } from "../types/league";
 import { Team } from "../types/team";
 import { toast } from "@/hooks/use-toast";
 
 export const createLeague = (newLeague: League, leagues: League[], setLeagues: (leagues: League[]) => void, showToast: boolean = true) => {
   const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+  
   const updatedLeagues = [...existingLeagues, newLeague];
   localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-  setLeagues([...leagues, newLeague]);
   
-  // Only show toast if specifically requested
+  setLeagues([...leagues, newLeague]);
+  window.dispatchEvent(new Event('leagueUpdate'));
+  
   if (showToast) {
     toast({
       title: "Success",
       description: "League created successfully!",
     });
   }
+  return true;
+};
+
+export const createLeagueSession = (newSession: LeagueSession, leagues: League[], setLeagues: (leagues: League[]) => void) => {
+  const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+  const parentLeague = existingLeagues.find((league: League) => league.id === newSession.parentLeagueId);
+  
+  if (!parentLeague) {
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Parent league not found.",
+    });
+    return false;
+  }
+
+  // Add the session to the parent league
+  const updatedLeague = {
+    ...parentLeague,
+    sessions: [...parentLeague.sessions, newSession]
+  };
+
+  // Update the leagues array
+  const updatedLeagues = existingLeagues.map((league: League) =>
+    league.id === parentLeague.id ? updatedLeague : league
+  );
+
+  localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+  setLeagues(leagues.map(league => league.id === parentLeague.id ? updatedLeague : league));
+  window.dispatchEvent(new Event('leagueUpdate'));
+
+  toast({
+    title: "Success",
+    description: "League session created successfully!",
+  });
+  return true;
 };
 
 export const deleteLeague = (
@@ -24,7 +61,8 @@ export const deleteLeague = (
   leagues: League[],
   setLeagues: (leagues: League[]) => void
 ): boolean => {
-  if (password !== selectedLeague.password) {
+  // Check if any session matches the password
+  if (!selectedLeague.sessions || !selectedLeague.sessions.some(session => session.password === password)) {
     toast({
       variant: "destructive",
       title: "Error",
@@ -39,7 +77,6 @@ export const deleteLeague = (
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
     setLeagues(leagues.filter(league => league.id !== selectedLeague.id));
     
-    // Dispatch the leagueUpdate event
     window.dispatchEvent(new Event('leagueUpdate'));
     
     toast({
@@ -59,7 +96,7 @@ export const deleteLeague = (
 };
 
 export const addTeam = (
-  selectedLeague: League,
+  selectedSession: LeagueSession,
   teamName: string,
   leagues: League[],
   setLeagues: (leagues: League[]) => void
@@ -70,9 +107,9 @@ export const addTeam = (
   const userData = JSON.parse(currentUser);
   
   const newTeam: Team = {
-    id: Date.now(),
+    id: Date.now() + Math.floor(Math.random() * 1000),
     name: teamName,
-    password: selectedLeague.password,
+    password: selectedSession.password,
     createdAt: new Date().toISOString(),
     createdBy: userData.username,
     members: [userData.username]
@@ -80,27 +117,37 @@ export const addTeam = (
 
   try {
     const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-    const updatedLeagues = allLeagues.map((league: League) => 
-      league.id === selectedLeague.id
-        ? {
-            ...league,
-            teams: [...(league.teams || []), newTeam]
-          }
-        : league
+    const parentLeague = allLeagues.find((league: League) => league.id === selectedSession.parentLeagueId);
+    
+    if (!parentLeague) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Parent league not found.",
+      });
+      return false;
+    }
+
+    // Update the session within the parent league
+    const updatedLeague = {
+      ...parentLeague,
+      sessions: parentLeague.sessions.map(session =>
+        session.id === selectedSession.id
+          ? { ...session, teams: [...session.teams, newTeam] }
+          : session
+      )
+    };
+
+    // Update all leagues
+    const updatedLeagues = allLeagues.map((league: League) =>
+      league.id === updatedLeague.id ? updatedLeague : league
     );
 
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-
-    const updatedLeague = {
-      ...selectedLeague,
-      teams: [...(selectedLeague.teams || []), newTeam]
-    };
-
     setLeagues(leagues.map(league =>
       league.id === updatedLeague.id ? updatedLeague : league
     ));
 
-    // Dispatch the leagueUpdate event
     window.dispatchEvent(new Event('leagueUpdate'));
 
     toast({
@@ -120,13 +167,13 @@ export const addTeam = (
 };
 
 export const deleteTeam = (
-  selectedLeague: League,
+  selectedSession: LeagueSession,
   selectedTeam: Team,
   password: string,
   leagues: League[],
   setLeagues: (leagues: League[]) => void
 ): boolean => {
-  if (password !== selectedLeague.password) {
+  if (password !== selectedSession.password) {
     toast({
       variant: "destructive",
       title: "Error",
@@ -137,27 +184,37 @@ export const deleteTeam = (
 
   try {
     const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-    const updatedLeagues = allLeagues.map((league: League) => 
-      league.id === selectedLeague.id
-        ? {
-            ...league,
-            teams: league.teams.filter(team => team.id !== selectedTeam.id)
-          }
-        : league
+    const parentLeague = allLeagues.find((league: League) => league.id === selectedSession.parentLeagueId);
+    
+    if (!parentLeague) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Parent league not found.",
+      });
+      return false;
+    }
+
+    // Update the session within the parent league
+    const updatedLeague = {
+      ...parentLeague,
+      sessions: parentLeague.sessions.map(session =>
+        session.id === selectedSession.id
+          ? { ...session, teams: session.teams.filter(team => team.id !== selectedTeam.id) }
+          : session
+      )
+    };
+
+    // Update all leagues
+    const updatedLeagues = allLeagues.map((league: League) =>
+      league.id === updatedLeague.id ? updatedLeague : league
     );
 
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-
-    const updatedLeague = {
-      ...selectedLeague,
-      teams: selectedLeague.teams.filter(team => team.id !== selectedTeam.id)
-    };
-
     setLeagues(leagues.map(league =>
       league.id === updatedLeague.id ? updatedLeague : league
     ));
 
-    // Dispatch the leagueUpdate event
     window.dispatchEvent(new Event('leagueUpdate'));
 
     toast({
@@ -190,6 +247,5 @@ export const updateLeague = (
     league.id === updatedLeague.id ? updatedLeague : league
   ));
   
-  // Dispatch the leagueUpdate event
   window.dispatchEvent(new Event('leagueUpdate'));
 };

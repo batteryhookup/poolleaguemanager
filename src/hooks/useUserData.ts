@@ -1,39 +1,72 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "./use-toast";
-import { League } from "@/components/account/types/league";
+import { League, LeagueSession } from "@/components/account/types/league";
 import { Team } from "@/components/account/types/team";
 import { isAfter } from "date-fns";
 
-export const categorizeLeague = (league: League, username: string, now: Date = new Date()) => {
-  if (!league.schedule || league.schedule.length === 0) {
-    return 'active';
+export const categorizeLeague = (league: League): "archived" | "upcoming" | "active" => {
+  // Get current date and set to midnight to avoid timezone issues
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  // Debug logging
+  console.log('=== League Categorization Debug ===');
+  console.log(`League: ${league.name}`);
+  console.log('Current date:', now.toISOString());
+  console.log('================================');
+
+  // Categorize each session
+  const categorizedSessions = league.sessions.map(session => {
+    if (!session.schedule || session.schedule.length === 0) return null;
+    
+    const firstDate = new Date(session.schedule[0].date);
+    const lastDate = new Date(session.schedule[session.schedule.length - 1].date);
+    firstDate.setHours(0, 0, 0, 0);
+    lastDate.setHours(0, 0, 0, 0);
+
+    console.log(`Session: ${session.sessionName}`);
+    console.log('First date:', firstDate.toISOString());
+    console.log('Last date:', lastDate.toISOString());
+
+    // If the first date is in the future, it's upcoming
+    if (firstDate > now) {
+      console.log('Session is upcoming');
+      return "upcoming";
+    }
+    
+    // If the last date is in the past, it's archived
+    if (lastDate < now) {
+      console.log('Session is archived');
+      return "archived";
+    }
+    
+    // If we're between first and last date, it's active
+    console.log('Session is active');
+    return "active";
+  }).filter(Boolean);
+
+  // If any session is upcoming, the league is upcoming
+  if (categorizedSessions.some(cat => cat === "upcoming")) {
+    return "upcoming";
+  }
+  
+  // If all sessions are archived, the league is archived
+  if (categorizedSessions.every(cat => cat === "archived")) {
+    return "archived";
+  }
+  
+  // If there's at least one active session, the league is active
+  if (categorizedSessions.some(cat => cat === "active")) {
+    return "active";
   }
 
-  const firstSession = new Date(`${league.schedule[0].date}T${league.schedule[0].startTime}`);
-  const lastSession = new Date(`${league.schedule[league.schedule.length - 1].date}T${league.schedule[league.schedule.length - 1].endTime}`);
-
-  console.log('Categorizing league:', {
-    leagueName: league.name,
-    firstSession: firstSession.toISOString(),
-    lastSession: lastSession.toISOString(),
-    now: now.toISOString(),
-    isAfterLast: isAfter(now, lastSession),
-    isBeforeFirst: isAfter(firstSession, now)
-  });
-
-  if (isAfter(now, lastSession)) {
-    return 'archived';
-  } else if (isAfter(firstSession, now)) {
-    return 'upcoming';
-  } else {
-    return 'active';
-  }
+  // Default to archived if no sessions
+  return "archived";
 };
 
 export const useUserData = () => {
-  const [activeLeagues, setActiveLeagues] = useState<League[]>([]);
+  const [leagues, setLeagues] = useState<League[]>([]);
   const [upcomingLeagues, setUpcomingLeagues] = useState<League[]>([]);
   const [archivedLeagues, setArchivedLeagues] = useState<League[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -41,85 +74,103 @@ export const useUserData = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const loadUserData = () => {
-    console.log("Loading user data...");
-    const currentUser = localStorage.getItem("currentUser");
-    if (!currentUser) {
-      console.log("No current user found, redirecting to home");
-      navigate("/");
-      return;
-    }
+  const updateLeagueLists = () => {
+    const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
 
-    try {
-      const userData = JSON.parse(currentUser);
-      setUsername(userData.username);
+    // Filter leagues where the user is either the creator or a member of any team
+    const userLeagues = allLeagues.filter((league: League) => {
+      const isCreator = league.createdBy === currentUser.username;
+      const isMember = league.sessions.some(session =>
+        session.teams.some(team =>
+          team.members.includes(currentUser.username)
+        )
+      );
+      return isCreator || isMember;
+    });
 
-      const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-      const now = new Date();
-      
-      const categorizedLeagues = {
-        active: [] as League[],
-        upcoming: [] as League[],
-        archived: [] as League[]
-      };
+    // Categorize sessions within each league
+    const categorizedLeagues = userLeagues.reduce((acc: { active: League[], upcoming: League[], archived: League[] }, league: League) => {
+      // Create copies of the league for each category
+      const activeLeague = { ...league, sessions: [] };
+      const upcomingLeague = { ...league, sessions: [] };
+      const archivedLeague = { ...league, sessions: [] };
 
-      allLeagues.forEach((league: League) => {
-        const isUserLeague = league.createdBy === userData.username;
-        const isUserMember = league.teams?.some((team: Team) => 
-          team.members?.includes(userData.username)
-        );
+      // Categorize each session
+      league.sessions.forEach(session => {
+        if (!session.schedule || session.schedule.length === 0) return;
 
-        if (isUserLeague || isUserMember) {
-          const category = categorizeLeague(league, userData.username, now);
-          categorizedLeagues[category].push(league);
+        const firstDate = new Date(session.schedule[0].date);
+        const lastDate = new Date(session.schedule[session.schedule.length - 1].date);
+        firstDate.setHours(0, 0, 0, 0);
+        lastDate.setHours(0, 0, 0, 0);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        if (firstDate > now) {
+          upcomingLeague.sessions.push(session);
+        } else if (lastDate < now) {
+          archivedLeague.sessions.push(session);
+        } else {
+          activeLeague.sessions.push(session);
         }
       });
 
-      console.log("Categorized leagues:", categorizedLeagues);
+      // Only add leagues to categories if they have sessions
+      if (activeLeague.sessions.length > 0) {
+        acc.active.push(activeLeague);
+      }
+      if (upcomingLeague.sessions.length > 0) {
+        acc.upcoming.push(upcomingLeague);
+      }
+      if (archivedLeague.sessions.length > 0) {
+        acc.archived.push(archivedLeague);
+      }
 
-      setActiveLeagues(categorizedLeagues.active);
-      setUpcomingLeagues(categorizedLeagues.upcoming);
-      setArchivedLeagues(categorizedLeagues.archived);
+      return acc;
+    }, { active: [], upcoming: [], archived: [] });
 
-      const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
-      const userTeams = allTeams.filter((team: Team) => 
-        team.createdBy === userData.username || team.members.includes(userData.username)
-      );
-      setTeams(userTeams);
-    } catch (error) {
-      console.error("Error loading user data:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load your leagues and teams. Please try logging in again.",
-      });
-      navigate("/");
-    }
+    console.log('Categorized leagues:', {
+      active: categorizedLeagues.active.map(l => ({ name: l.name, sessions: l.sessions.map(s => s.sessionName) })),
+      upcoming: categorizedLeagues.upcoming.map(l => ({ name: l.name, sessions: l.sessions.map(s => s.sessionName) })),
+      archived: categorizedLeagues.archived.map(l => ({ name: l.name, sessions: l.sessions.map(s => s.sessionName) }))
+    });
+
+    setLeagues(categorizedLeagues.active);
+    setUpcomingLeagues(categorizedLeagues.upcoming);
+    setArchivedLeagues(categorizedLeagues.archived);
   };
 
   useEffect(() => {
-    const handleLeagueUpdate = () => {
-      console.log("League update event received, reloading data");
-      loadUserData();
+    updateLeagueLists();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "leagues" || e.key === "currentUser") {
+        updateLeagueLists();
+      }
     };
 
-    loadUserData();
-    window.addEventListener('leagueUpdate', handleLeagueUpdate);
-    window.addEventListener('storage', handleLeagueUpdate);
-    
+    const handleLeagueUpdate = () => {
+      updateLeagueLists();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("leagueUpdate", handleLeagueUpdate);
+
     return () => {
-      window.removeEventListener('leagueUpdate', handleLeagueUpdate);
-      window.removeEventListener('storage', handleLeagueUpdate);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("leagueUpdate", handleLeagueUpdate);
     };
   }, []);
 
   return {
-    activeLeagues,
+    leagues,
+    setLeagues,
     upcomingLeagues,
     archivedLeagues,
     teams,
-    username,
-    setActiveLeagues,
     setTeams,
+    username,
+    setUsername,
   };
 };

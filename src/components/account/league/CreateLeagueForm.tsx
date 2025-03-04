@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -15,28 +14,44 @@ import {
 import { LeagueScheduler } from "./LeagueScheduler";
 
 interface CreateLeagueFormProps {
-  onCreateLeague: (league: League) => void;
-  onComplete: () => void;
+  onSubmit: (league: League) => void;
 }
 
-export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFormProps) {
+export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
   const [leagueName, setLeagueName] = useState("");
+  const [sessionName, setSessionName] = useState("");
+  const [selectedLeagueId, setSelectedLeagueId] = useState<number | "new">("new");
   const [leagueLocation, setLeagueLocation] = useState("");
   const [leaguePassword, setLeaguePassword] = useState("");
+  const [sessionPassword, setSessionPassword] = useState("");
   const [leagueType, setLeagueType] = useState<"team" | "singles">("singles");
   const [maxPlayersPerTeam, setMaxPlayersPerTeam] = useState("");
   const [playersPerNight, setPlayersPerNight] = useState("");
   const [gameType, setGameType] = useState("8-ball");
   const [customGameType, setCustomGameType] = useState("");
-  const [sessions, setSessions] = useState<LeagueSession[]>([]);
+  const [schedule, setSchedule] = useState<{ date: string; startTime: string; endTime: string; }[]>([]);
   const { toast } = useToast();
 
-  const handleCreateLeague = (e: React.FormEvent) => {
+  // Get user's existing leagues
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+  // Get all leagues (active, upcoming, and archived)
+  const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+  const userLeagues = allLeagues.filter((league: League) => league.createdBy === currentUser.username);
+
+  // Reset form when switching between new and existing league
+  useEffect(() => {
+    if (selectedLeagueId !== "new") {
+      const selectedLeague = userLeagues.find(league => league.id === selectedLeagueId);
+      if (selectedLeague) {
+        setLeagueName(selectedLeague.name);
+      }
+    }
+  }, [selectedLeagueId, userLeagues]);
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-    const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     
-    if (sessions.length === 0) {
+    if (schedule.length === 0) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -44,91 +59,187 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
       });
       return;
     }
-    
-    const isDuplicate = existingLeagues.some(
-      (league: League) => league.name.toLowerCase() === leagueName.toLowerCase()
-    );
 
-    if (isDuplicate) {
+    if (selectedLeagueId === "new" && !leaguePassword) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "A league with this name already exists.",
+        description: "Please enter a league password.",
       });
       return;
     }
 
-    if (leagueType === "team") {
-      if (!maxPlayersPerTeam || !playersPerNight) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Please fill in all team-related fields.",
-        });
-        return;
-      }
-
-      const maxPlayers = parseInt(maxPlayersPerTeam);
-      const nightPlayers = parseInt(playersPerNight);
-
-      if (nightPlayers > maxPlayers) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Players per night cannot exceed maximum players per team.",
-        });
-        return;
-      }
+    if (!sessionPassword) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a session password.",
+      });
+      return;
     }
 
     const finalGameType = gameType === "specify" ? customGameType : gameType;
+    const now = new Date().toISOString();
 
-    const newLeague: League = {
-      id: Date.now(),
-      name: leagueName,
-      location: leagueLocation,
-      password: leaguePassword,
-      createdAt: new Date().toISOString(),
-      createdBy: currentUser.username,
-      teams: [],
-      type: leagueType,
-      gameType: finalGameType,
-      schedule: sessions,
-      ...(leagueType === "team" && {
-        maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
-        playersPerNight: parseInt(playersPerNight),
-      }),
-    };
+    if (selectedLeagueId === "new") {
+      // Creating a new league with its first session
+      const newLeague: League = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        name: leagueName,
+        createdAt: now,
+        createdBy: currentUser.username,
+        sessions: [],
+        password: leaguePassword
+      };
 
-    onCreateLeague(newLeague);
+      const firstSession: LeagueSession = {
+        id: Date.now() + Math.floor(Math.random() * 1000) + 1,
+        parentLeagueId: newLeague.id,
+        name: leagueName,
+        sessionName: sessionName || "Initial Session",
+        location: leagueLocation,
+        password: sessionPassword,
+        createdAt: now,
+        createdBy: currentUser.username,
+        teams: [],
+        type: leagueType,
+        gameType: finalGameType,
+        schedule,
+        ...(leagueType === "team" && {
+          maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
+          playersPerNight: parseInt(playersPerNight),
+        }),
+      };
+
+      newLeague.sessions = [firstSession];
+      onSubmit(newLeague);
+    } else {
+      // Creating a new session for an existing league
+      const parentLeague = allLeagues.find(l => l.id === selectedLeagueId);
+      if (!parentLeague) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Selected league not found.",
+        });
+        return;
+      }
+
+      const newSession: LeagueSession = {
+        id: Date.now() + Math.floor(Math.random() * 1000) + 1,
+        parentLeagueId: parentLeague.id,
+        name: parentLeague.name,
+        sessionName: sessionName,
+        location: leagueLocation,
+        password: sessionPassword,
+        createdAt: now,
+        createdBy: currentUser.username,
+        teams: [],
+        type: leagueType,
+        gameType: finalGameType,
+        schedule,
+        ...(leagueType === "team" && {
+          maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
+          playersPerNight: parseInt(playersPerNight),
+        }),
+      };
+
+      const updatedLeague = {
+        ...parentLeague,
+        sessions: [...parentLeague.sessions, newSession]
+      };
+      onSubmit(updatedLeague);
+    }
+
+    // Reset form
     setLeagueName("");
+    setSessionName("");
+    setSelectedLeagueId("new");
     setLeagueLocation("");
     setLeaguePassword("");
+    setSessionPassword("");
     setLeagueType("singles");
     setMaxPlayersPerTeam("");
     setPlayersPerNight("");
     setGameType("8-ball");
     setCustomGameType("");
-    setSessions([]);
-    onComplete();
-
-    toast({
-      title: "Success",
-      description: "League created successfully!",
-    });
+    setSchedule([]);
   };
 
   return (
-    <form onSubmit={handleCreateLeague} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {userLeagues.length > 0 && (
+        <div className="space-y-2">
+          <Label>Create For</Label>
+          <Select value={selectedLeagueId.toString()} onValueChange={(value) => setSelectedLeagueId(value === "new" ? "new" : parseInt(value))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select league or create new" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="new">Create New League</SelectItem>
+              {userLeagues.map(league => (
+                <SelectItem key={league.id} value={league.id.toString()}>
+                  {league.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {selectedLeagueId === "new" && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="leagueName">League Name</Label>
+            <Input
+              id="leagueName"
+              placeholder="Enter league name"
+              value={leagueName}
+              onChange={(e) => setLeagueName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="leaguePassword">League Password</Label>
+            <Input
+              id="leaguePassword"
+              type="password"
+              placeholder="Enter league password"
+              value={leaguePassword}
+              onChange={(e) => setLeaguePassword(e.target.value)}
+              required
+            />
+            <p className="text-sm text-muted-foreground">
+              This password will be required to delete the entire league and all its sessions.
+            </p>
+          </div>
+        </>
+      )}
+
       <div className="space-y-2">
-        <Label htmlFor="leagueName">League Name</Label>
+        <Label htmlFor="sessionName">Session Name</Label>
         <Input
-          id="leagueName"
-          placeholder="Enter league name"
-          value={leagueName}
-          onChange={(e) => setLeagueName(e.target.value)}
+          id="sessionName"
+          placeholder="e.g., Summer 2024, Tournament 1, etc."
+          value={sessionName}
+          onChange={(e) => setSessionName(e.target.value)}
           required
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="sessionPassword">Session Password</Label>
+        <Input
+          id="sessionPassword"
+          type="password"
+          placeholder="Enter session password"
+          value={sessionPassword}
+          onChange={(e) => setSessionPassword(e.target.value)}
+          required
+        />
+        <p className="text-sm text-muted-foreground">
+          This password will be required to manage teams and cancel this session.
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -149,26 +260,30 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
             <SelectValue placeholder="Select game type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="8-ball">8 Ball</SelectItem>
-            <SelectItem value="9-ball">9 Ball</SelectItem>
-            <SelectItem value="10-ball">10 Ball</SelectItem>
-            <SelectItem value="specify">Specify Other</SelectItem>
+            <SelectItem value="8-ball">8-Ball</SelectItem>
+            <SelectItem value="9-ball">9-Ball</SelectItem>
+            <SelectItem value="10-ball">10-Ball</SelectItem>
+            <SelectItem value="straight">Straight Pool</SelectItem>
+            <SelectItem value="specify">Other (specify)</SelectItem>
           </SelectContent>
         </Select>
-        {gameType === "specify" && (
-          <div className="mt-2">
-            <Input
-              placeholder="Enter custom game type"
-              value={customGameType}
-              onChange={(e) => setCustomGameType(e.target.value)}
-              required
-            />
-          </div>
-        )}
       </div>
 
+      {gameType === "specify" && (
+        <div className="space-y-2">
+          <Label htmlFor="customGameType">Custom Game Type</Label>
+          <Input
+            id="customGameType"
+            placeholder="Enter custom game type"
+            value={customGameType}
+            onChange={(e) => setCustomGameType(e.target.value)}
+            required
+          />
+        </div>
+      )}
+
       <div className="space-y-2">
-        <Label htmlFor="leagueType">League Type</Label>
+        <Label>League Type</Label>
         <Select value={leagueType} onValueChange={(value: "team" | "singles") => setLeagueType(value)}>
           <SelectTrigger>
             <SelectValue placeholder="Select league type" />
@@ -183,12 +298,12 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
       {leagueType === "team" && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="maxPlayers">Maximum Players per Team</Label>
+            <Label htmlFor="maxPlayersPerTeam">Maximum Players per Team</Label>
             <Input
-              id="maxPlayers"
+              id="maxPlayersPerTeam"
               type="number"
               min="1"
-              placeholder="Enter max players per team"
+              placeholder="Enter maximum players per team"
               value={maxPlayersPerTeam}
               onChange={(e) => setMaxPlayersPerTeam(e.target.value)}
               required
@@ -196,7 +311,7 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="playersPerNight">Players per League Night</Label>
+            <Label htmlFor="playersPerNight">Players per Night</Label>
             <Input
               id="playersPerNight"
               type="number"
@@ -211,27 +326,15 @@ export function CreateLeagueForm({ onCreateLeague, onComplete }: CreateLeagueFor
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="password">League Password</Label>
-        <Input
-          id="password"
-          type="password"
-          placeholder="Create a password"
-          value={leaguePassword}
-          onChange={(e) => setLeaguePassword(e.target.value)}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>League Schedule</Label>
-        <LeagueScheduler
-          sessions={sessions}
-          onSessionsChange={setSessions}
+        <Label>Schedule</Label>
+        <LeagueScheduler 
+          onScheduleChange={setSchedule} 
+          initialSchedule={schedule}
         />
       </div>
 
       <Button type="submit" className="w-full">
-        Create League
+        {selectedLeagueId === "new" ? "Create League" : "Add Session"}
       </Button>
     </form>
   );

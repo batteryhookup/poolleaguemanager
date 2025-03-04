@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
-  base: mode === 'production' ? '/poolleaguemanager/' : '/',
+  base: '/',  // Changed this line to always use root path
   plugins: [
     react(),
     mode === 'development' && componentTagger(),

@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/Layout";
 import { LeagueManagement } from "@/components/account/LeagueManagement";
 import { TeamManagement } from "@/components/account/TeamManagement";
@@ -11,12 +10,12 @@ import { useNavigate } from "react-router-dom";
 const MyAccount = () => {
   const navigate = useNavigate();
   const {
-    activeLeagues,
+    leagues,
     upcomingLeagues,
     archivedLeagues,
     teams,
     username,
-    setActiveLeagues,
+    setLeagues,
     setTeams,
   } = useUserData();
 
@@ -36,10 +35,10 @@ const MyAccount = () => {
         <div className="grid gap-8">
           <section>
             <LeagueManagement 
-              leagues={activeLeagues}
+              leagues={leagues}
               upcomingLeagues={upcomingLeagues}
               archivedLeagues={archivedLeagues} 
-              setLeagues={setActiveLeagues}
+              setLeagues={setLeagues}
             />
           </section>
 

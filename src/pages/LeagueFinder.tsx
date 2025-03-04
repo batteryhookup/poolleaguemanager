@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/Layout";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
@@ -19,6 +18,22 @@ import { useToast } from "@/hooks/use-toast";
 import { JoinLeagueDialog } from "@/components/league/JoinLeagueDialog";
 import { LeagueStatusBadge } from "@/components/league/LeagueStatusBadge";
 import { LeagueScheduleDisplay } from "@/components/league/LeagueScheduleDisplay";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const TIMEZONES = [
+  { value: "America/New_York", label: "Eastern Time (ET)" },
+  { value: "America/Chicago", label: "Central Time (CT)" },
+  { value: "America/Denver", label: "Mountain Time (MT)" },
+  { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
+  { value: "America/Anchorage", label: "Alaska Time (AKT)" },
+  { value: "Pacific/Honolulu", label: "Hawaii Time (HT)" },
+];
 
 const LeagueFinder = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
@@ -26,6 +41,7 @@ const LeagueFinder = () => {
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
   const [userTeams, setUserTeams] = useState<Team[]>([]);
+  const [selectedTimezone, setSelectedTimezone] = useState("America/New_York");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -104,10 +120,14 @@ const LeagueFinder = () => {
     });
   };
 
-  const filteredLeagues = leagues.filter(
-    (league) =>
-      league.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      league.location.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredLeagues = leagues.filter((league) =>
+    league.sessions.some(
+      (session) =>
+        league.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        session.sessionName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        session.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        session.gameType.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
   const sortedLeagues = [...filteredLeagues].sort((a, b) =>
@@ -141,41 +161,61 @@ const LeagueFinder = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>League Name</TableHead>
+                <TableHead>Session</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Game Type</TableHead>
                 <TableHead>League Type</TableHead>
-                <TableHead>Schedule</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    Schedule
+                    <Select value={selectedTimezone} onValueChange={setSelectedTimezone}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Select timezone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIMEZONES.map((tz) => (
+                          <SelectItem key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedLeagues.map((league) => (
-                <TableRow key={league.id}>
-                  <TableCell className="font-medium">{league.name}</TableCell>
-                  <TableCell>{league.location}</TableCell>
-                  <TableCell>{league.gameType}</TableCell>
-                  <TableCell className="capitalize">{league.type}</TableCell>
-                  <TableCell>
-                    <LeagueScheduleDisplay league={league} />
-                  </TableCell>
-                  <TableCell>
-                    <LeagueStatusBadge league={league} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleJoinClick(league)}
-                    >
-                      Join League
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {sortedLeagues.flatMap((league) =>
+                league.sessions.map((session) => (
+                  <TableRow key={`${league.id}-${session.id}`}>
+                    <TableCell className="font-medium">{league.name}</TableCell>
+                    <TableCell>{session.sessionName}</TableCell>
+                    <TableCell>{session.location}</TableCell>
+                    <TableCell>{session.gameType}</TableCell>
+                    <TableCell className="capitalize">{session.type}</TableCell>
+                    <TableCell>
+                      <LeagueScheduleDisplay session={session} timezone={selectedTimezone} />
+                    </TableCell>
+                    <TableCell>
+                      <LeagueStatusBadge session={session} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleJoinClick(league)}
+                      >
+                        Join League
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
               {sortedLeagues.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6">
+                  <TableCell colSpan={8} className="text-center py-6">
                     No leagues found. Try a different search term or create a new league.
                   </TableCell>
                 </TableRow>
