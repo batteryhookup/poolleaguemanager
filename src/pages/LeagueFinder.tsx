@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
-import { League } from "@/components/account/types/league";
+import { League, LeagueSession } from "@/components/account/types/league";
 import { Team } from "@/components/account/types/team";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +39,37 @@ const TIMEZONES = [
   { value: "Pacific/Honolulu", label: "Hawaii Time (HT)" },
 ];
 
+// Function to transform backend league data to frontend League type
+const transformBackendLeagueData = (backendLeagues: any[]): League[] => {
+  return backendLeagues.map(backendLeague => {
+    // Transform sessions
+    const transformedSessions: LeagueSession[] = backendLeague.sessions?.map((session: any) => ({
+      id: typeof session._id === 'string' ? parseInt(session._id.substring(0, 8), 16) : Date.now(),
+      parentLeagueId: typeof backendLeague._id === 'string' ? parseInt(backendLeague._id.substring(0, 8), 16) : Date.now(),
+      name: session.name,
+      sessionName: session.name,
+      location: backendLeague.location || '',
+      password: '',  // We don't store passwords in the backend response
+      teams: session.teams || [],
+      type: backendLeague.leagueType === 'team' ? 'team' : 'singles',
+      gameType: backendLeague.gameType || '',
+      schedule: [],  // Would need to transform date format if available
+      createdBy: typeof backendLeague.createdBy === 'string' ? backendLeague.createdBy : 'unknown',
+      createdAt: session.createdAt || new Date().toISOString()
+    })) || [];
+
+    // Transform league
+    return {
+      id: typeof backendLeague._id === 'string' ? parseInt(backendLeague._id.substring(0, 8), 16) : Date.now(),
+      name: backendLeague.name,
+      sessions: transformedSessions,
+      password: '',  // We don't store passwords in the backend response
+      createdBy: typeof backendLeague.createdBy === 'string' ? backendLeague.createdBy : 'unknown',
+      createdAt: backendLeague.createdAt || new Date().toISOString()
+    };
+  });
+};
+
 const LeagueFinder = () => {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,7 +90,13 @@ const LeagueFinder = () => {
         
         if (response.ok) {
           const data = await response.json();
-          setLeagues(data);
+          console.log("Backend leagues data:", data);
+          
+          // Transform the backend data to match frontend League type
+          const transformedLeagues = transformBackendLeagueData(data);
+          console.log("Transformed leagues data:", transformedLeagues);
+          
+          setLeagues(transformedLeagues);
         } else {
           // Fall back to localStorage if API fails
           console.warn("Failed to fetch leagues from API, falling back to localStorage");

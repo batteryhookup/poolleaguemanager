@@ -16,6 +16,38 @@ const generateNumericId = (): number => {
   );
 };
 
+// Helper function to transform frontend League to backend format
+const transformLeagueForBackend = (league: League) => {
+  return {
+    name: league.name,
+    location: league.sessions[0]?.location || "Unknown",
+    gameType: league.sessions[0]?.gameType || "8-ball",
+    leagueType: league.sessions[0]?.type || "singles",
+    schedule: "Weekly", // Default value
+    status: "active",
+    sessions: league.sessions.map(session => ({
+      name: session.sessionName || session.name,
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
+      teams: session.teams || [],
+      matches: [],
+      standings: []
+    }))
+  };
+};
+
+// Helper function to transform frontend LeagueSession to backend format
+const transformSessionForBackend = (session: LeagueSession) => {
+  return {
+    name: session.sessionName || session.name,
+    startDate: new Date(),
+    endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
+    teams: session.teams || [],
+    matches: [],
+    standings: []
+  };
+};
+
 export const createLeague = async (
   newLeague: League,
   leagues: League[],
@@ -39,6 +71,10 @@ export const createLeague = async (
     
     if (token) {
       try {
+        // Transform the league data for the backend
+        const backendLeagueData = transformLeagueForBackend(newLeague);
+        console.log("Sending league data to backend:", backendLeagueData);
+        
         // Try to create league via API
         const response = await fetch(`${API_URL}/leagues`, {
           method: 'POST',
@@ -46,14 +82,38 @@ export const createLeague = async (
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(newLeague)
+          body: JSON.stringify(backendLeagueData)
         });
         
         if (response.ok) {
           const createdLeague = await response.json();
+          console.log("Backend response for created league:", createdLeague);
+          
+          // Transform the backend response to frontend format
+          const frontendLeague: League = {
+            id: typeof createdLeague._id === 'string' ? parseInt(createdLeague._id.substring(0, 8), 16) : Date.now(),
+            name: createdLeague.name,
+            sessions: createdLeague.sessions?.map((session: any) => ({
+              id: typeof session._id === 'string' ? parseInt(session._id.substring(0, 8), 16) : Date.now(),
+              parentLeagueId: typeof createdLeague._id === 'string' ? parseInt(createdLeague._id.substring(0, 8), 16) : Date.now(),
+              name: session.name,
+              sessionName: session.name,
+              location: createdLeague.location || '',
+              password: '',
+              teams: session.teams || [],
+              type: createdLeague.leagueType === 'team' ? 'team' : 'singles',
+              gameType: createdLeague.gameType || '',
+              schedule: [],
+              createdBy: typeof createdLeague.createdBy === 'string' ? createdLeague.createdBy : 'unknown',
+              createdAt: session.createdAt || new Date().toISOString()
+            })) || [],
+            password: '',
+            createdBy: typeof createdLeague.createdBy === 'string' ? createdLeague.createdBy : 'unknown',
+            createdAt: createdLeague.createdAt || new Date().toISOString()
+          };
           
           // Update local state
-          setLeagues(prevLeagues => [...prevLeagues, createdLeague]);
+          setLeagues(prevLeagues => [...prevLeagues, frontendLeague]);
           
           toast({
             title: "Success",
@@ -62,7 +122,7 @@ export const createLeague = async (
           
           if (onSuccess) onSuccess();
           
-          return createdLeague;
+          return frontendLeague;
         } else {
           // Fall back to localStorage if API fails
           console.warn("Failed to create league via API, falling back to localStorage");
@@ -156,25 +216,63 @@ export const createLeagueSession = async (
     
     if (token) {
       try {
+        // Find the backend ID for this league
+        // This is a bit of a hack - we're assuming the backend ID is stored in localStorage
+        const allBackendLeagues = await fetch(`${API_URL}/leagues`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }).then(res => res.json());
+        
+        const backendLeague = allBackendLeagues.find((bl: any) => 
+          bl.name === league.name
+        );
+        
+        if (!backendLeague) {
+          console.warn("Could not find backend league, falling back to localStorage");
+          return createLeagueSessionLocalStorage(leagueId, newSession, leagues, setLeagues, onSuccess);
+        }
+        
+        // Transform the session data for the backend
+        const backendSessionData = transformSessionForBackend(newSession);
+        console.log("Sending session data to backend:", backendSessionData);
+        
         // Try to create session via API
-        const response = await fetch(`${API_URL}/leagues/${leagueId}/sessions`, {
+        const response = await fetch(`${API_URL}/leagues/${backendLeague._id}/sessions`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(newSession)
+          body: JSON.stringify(backendSessionData)
         });
         
         if (response.ok) {
           const createdSession = await response.json();
+          console.log("Backend response for created session:", createdSession);
+          
+          // Transform the backend response to frontend format
+          const frontendSession: LeagueSession = {
+            id: typeof createdSession._id === 'string' ? parseInt(createdSession._id.substring(0, 8), 16) : Date.now(),
+            parentLeagueId: leagueId,
+            name: createdSession.name,
+            sessionName: createdSession.name,
+            location: league.sessions[0]?.location || '',
+            password: '',
+            teams: createdSession.teams || [],
+            type: league.sessions[0]?.type || 'singles',
+            gameType: league.sessions[0]?.gameType || '8-ball',
+            schedule: [],
+            createdBy: league.createdBy,
+            createdAt: createdSession.createdAt || new Date().toISOString()
+          };
           
           // Update local state
           const updatedLeagues = [...leagues];
           if (!updatedLeagues[leagueIndex].sessions) {
             updatedLeagues[leagueIndex].sessions = [];
           }
-          updatedLeagues[leagueIndex].sessions.push(createdSession);
+          updatedLeagues[leagueIndex].sessions.push(frontendSession);
           setLeagues(updatedLeagues);
           
           toast({
@@ -184,7 +282,7 @@ export const createLeagueSession = async (
           
           if (onSuccess) onSuccess();
           
-          return createdSession;
+          return frontendSession;
         } else {
           // Fall back to localStorage if API fails
           console.warn("Failed to create session via API, falling back to localStorage");
