@@ -101,15 +101,42 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
     const finalGameType = gameType === "specify" ? customGameType : gameType;
     const now = new Date().toISOString();
 
-    // Generate truly unique IDs with high entropy
+    // Generate truly unique IDs with high entropy and timestamp
     const generateUniqueId = () => {
-      return Date.now() + Math.floor(Math.random() * 10000000);
+      const timestamp = Date.now();
+      const random = Math.floor(Math.random() * 1000000000);
+      return timestamp * 1000 + random; // Combine timestamp with random number
+    };
+
+    // Check if an ID already exists in localStorage
+    const isIdUnique = (id: number, type: 'league' | 'session') => {
+      const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]") as League[];
+      
+      if (type === 'league') {
+        return !allLeagues.some(league => league.id === id);
+      } else {
+        return !allLeagues.some(league => 
+          league.sessions.some(session => session.id === id)
+        );
+      }
+    };
+
+    // Generate a guaranteed unique ID
+    const getUniqueId = (type: 'league' | 'session') => {
+      let id = generateUniqueId();
+      while (!isIdUnique(id, type)) {
+        console.warn(`ID collision detected for ${type} with ID ${id}, generating new ID`);
+        id = generateUniqueId();
+      }
+      return id;
     };
 
     if (selectedLeagueId === "new") {
       // Creating a new league with its first session
-      const leagueId = generateUniqueId();
-      const sessionId = generateUniqueId();
+      const leagueId = getUniqueId('league');
+      const sessionId = getUniqueId('session');
+      
+      console.log(`Creating new league with ID ${leagueId} and session with ID ${sessionId}`);
       
       const newLeague: League = {
         id: leagueId,
@@ -159,8 +186,10 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
         return;
       }
 
-      // Generate a unique ID for the new session with high entropy to avoid collisions
-      const sessionId = generateUniqueId();
+      // Generate a unique ID for the new session
+      const sessionId = getUniqueId('session');
+      
+      console.log(`Creating new session with ID ${sessionId} for league ${parentLeague.id}`);
       
       const newSession: LeagueSession = {
         id: sessionId,

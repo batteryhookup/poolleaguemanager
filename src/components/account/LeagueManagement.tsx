@@ -59,65 +59,85 @@ export function LeagueManagement({
       sessions: newLeague.sessions.map(s => ({ id: s.id, name: s.sessionName }))
     });
     
+    // Get the latest data from localStorage to avoid stale data
+    const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]") as League[];
+    
     // If this is a new league, create it
-    if (!leagues.some(league => league.id === newLeague.id)) {
+    if (!existingLeagues.some(league => league.id === newLeague.id)) {
       console.log("Creating new league");
       
-      // Check if a league with this ID already exists in localStorage
-      const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-      const leagueExists = existingLeagues.some((league: League) => league.id === newLeague.id);
-      
-      if (leagueExists) {
+      // Double-check that the league ID is unique
+      if (existingLeagues.some(league => league.id === newLeague.id)) {
         console.warn("League with this ID already exists in localStorage, generating new ID");
         // Generate a new ID to avoid duplication
-        newLeague.id = Date.now() + Math.floor(Math.random() * 10000000);
-        // Update the parentLeagueId in all sessions
+        const newId = Date.now() * 1000 + Math.floor(Math.random() * 1000000);
+        
+        // Update the league and all its sessions with the new ID
+        newLeague.id = newId;
         newLeague.sessions = newLeague.sessions.map(session => ({
           ...session,
-          parentLeagueId: newLeague.id
+          parentLeagueId: newId
         }));
       }
       
-      createLeague(newLeague, leagues, setLeagues, true);
+      // Add the new league to localStorage
+      const updatedLeagues = [...existingLeagues, newLeague];
+      localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+      
+      // Update state
+      setLeagues(prevLeagues => [...prevLeagues, newLeague]);
+      
+      // Dispatch event for other components
+      window.dispatchEvent(new Event('leagueUpdate'));
+      
+      // Show success toast
+      toast({
+        title: "Success",
+        description: "League created successfully!",
+      });
     } else {
       // If this is an existing league with a new session, update it
       console.log("Updating existing league with new session");
       
-      // Get the latest data from localStorage to avoid stale data
-      const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-      const existingLeague = existingLeagues.find((league: League) => league.id === newLeague.id);
+      // Find the existing league
+      const existingLeague = existingLeagues.find(league => league.id === newLeague.id);
       
       if (existingLeague) {
         console.log("Existing league sessions:", existingLeague.sessions.map(s => ({ id: s.id, name: s.sessionName })));
         console.log("New league sessions:", newLeague.sessions.map(s => ({ id: s.id, name: s.sessionName })));
         
         // Find the new session (the one that's in newLeague but not in existingLeague)
-        const newSession = newLeague.sessions.find(newS => 
+        const newSessions = newLeague.sessions.filter(newS => 
           !existingLeague.sessions.some(existingS => existingS.id === newS.id)
         );
         
-        if (newSession) {
-          console.log("Found new session:", { id: newSession.id, name: newSession.sessionName });
+        if (newSessions.length > 0) {
+          console.log(`Found ${newSessions.length} new sessions:`, newSessions.map(s => ({ id: s.id, name: s.sessionName })));
           
-          // Check if a session with this ID already exists in any league
-          const sessionExists = existingLeagues.some((league: League) => 
-            league.sessions.some(session => session.id === newSession.id)
-          );
+          // Check each new session for ID uniqueness across all leagues
+          const updatedNewSessions = newSessions.map(session => {
+            const sessionExists = existingLeagues.some(league => 
+              league.sessions.some(s => s.id === session.id)
+            );
+            
+            if (sessionExists) {
+              console.warn(`Session with ID ${session.id} already exists, generating new ID`);
+              // Generate a new ID to avoid duplication
+              const newId = Date.now() * 1000 + Math.floor(Math.random() * 1000000);
+              return { ...session, id: newId };
+            }
+            
+            return session;
+          });
           
-          if (sessionExists) {
-            console.warn("Session with this ID already exists, generating new ID");
-            // Generate a new ID to avoid duplication
-            newSession.id = Date.now() + Math.floor(Math.random() * 10000000);
-          }
-          
-          // Update the existing league with just the new session
+          // Update the existing league with the new sessions
           const updatedLeague = {
             ...existingLeague,
-            sessions: [...existingLeague.sessions, newSession]
+            sessions: [...existingLeague.sessions, ...updatedNewSessions]
           };
           
           // Update localStorage
-          const updatedLeagues = existingLeagues.map((league: League) =>
+          const updatedLeagues = existingLeagues.map(league => 
             league.id === updatedLeague.id ? updatedLeague : league
           );
           localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
@@ -133,13 +153,23 @@ export function LeagueManagement({
           // Show success toast
           toast({
             title: "Success",
-            description: "League session created successfully!",
+            description: `${updatedNewSessions.length} league session(s) created successfully!`,
           });
         } else {
-          console.warn("No new session found when comparing existing and new league");
+          console.warn("No new sessions found when comparing existing and new league");
+          toast({
+            variant: "destructive",
+            title: "Warning",
+            description: "No new sessions were found to add.",
+          });
         }
       } else {
         console.warn("Existing league not found in localStorage");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "League not found. Please try again.",
+        });
       }
     }
     

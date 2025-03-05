@@ -74,27 +74,73 @@ export const useUserData = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Function to clean up localStorage by removing all duplicate leagues and sessions
+  const cleanupLocalStorage = () => {
+    console.log("Running localStorage cleanup...");
+    const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]") as League[];
+    
+    if (allLeagues.length === 0) {
+      console.log("No leagues found in localStorage, nothing to clean up");
+      return;
+    }
+    
+    console.log(`Found ${allLeagues.length} leagues in localStorage`);
+    
+    // Step 1: Deduplicate leagues by ID
+    const leagueMap = new Map<number, League>();
+    allLeagues.forEach(league => {
+      if (leagueMap.has(league.id)) {
+        console.warn(`Found duplicate league with ID ${league.id}, name: ${league.name}`);
+        // If we already have this league, merge its sessions with the existing one
+        const existingLeague = leagueMap.get(league.id)!;
+        existingLeague.sessions = [...existingLeague.sessions, ...league.sessions];
+        leagueMap.set(league.id, existingLeague);
+      } else {
+        leagueMap.set(league.id, { ...league });
+      }
+    });
+    
+    // Step 2: For each league, deduplicate its sessions by ID
+    const cleanedLeagues = Array.from(leagueMap.values()).map(league => {
+      const sessionMap = new Map<number, LeagueSession>();
+      league.sessions.forEach(session => {
+        if (sessionMap.has(session.id)) {
+          console.warn(`Found duplicate session with ID ${session.id}, name: ${session.sessionName} in league ${league.name}`);
+        } else {
+          sessionMap.set(session.id, session);
+        }
+      });
+      
+      return {
+        ...league,
+        sessions: Array.from(sessionMap.values())
+      };
+    });
+    
+    console.log(`Cleanup complete. Reduced from ${allLeagues.length} leagues to ${cleanedLeagues.length} leagues`);
+    console.log(`Session counts before/after:`, {
+      before: allLeagues.reduce((sum, league) => sum + league.sessions.length, 0),
+      after: cleanedLeagues.reduce((sum, league) => sum + league.sessions.length, 0)
+    });
+    
+    // Save the cleaned leagues back to localStorage
+    localStorage.setItem("leagues", JSON.stringify(cleanedLeagues));
+    
+    // Trigger a refresh
+    window.dispatchEvent(new Event('leagueUpdate'));
+    
+    return cleanedLeagues;
+  };
+
   const updateLeagueLists = () => {
-    const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+    // Run the cleanup on every update to ensure we're always working with clean data
+    const cleanedLeagues = cleanupLocalStorage() || JSON.parse(localStorage.getItem("leagues") || "[]") as League[];
     const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
 
-    console.log("All leagues from localStorage:", allLeagues.map((l: League) => ({ id: l.id, name: l.name })));
-
-    // Ensure no duplicate leagues by using a Map with league ID as key
-    const uniqueLeagues = Array.from(
-      new Map(allLeagues.map((league: League) => [league.id, league])).values()
-    );
-
-    console.log("Unique leagues after deduplication:", uniqueLeagues.map((l: League) => ({ id: l.id, name: l.name })));
-
-    // If we found and removed duplicates, update localStorage
-    if (uniqueLeagues.length < allLeagues.length) {
-      console.warn(`Found ${allLeagues.length - uniqueLeagues.length} duplicate leagues, updating localStorage`);
-      localStorage.setItem("leagues", JSON.stringify(uniqueLeagues));
-    }
+    console.log("All leagues from localStorage after cleanup:", cleanedLeagues.map((l: League) => ({ id: l.id, name: l.name })));
 
     // Filter leagues where the user is either the creator or a member of any team
-    const userLeagues = uniqueLeagues.filter((league: League) => {
+    const userLeagues = cleanedLeagues.filter((league: League) => {
       const isCreator = league.createdBy === currentUser.username;
       const isMember = league.sessions.some(session =>
         session.teams.some(team =>
@@ -105,45 +151,54 @@ export const useUserData = () => {
     });
 
     // Categorize sessions within each league
-    const categorizedLeagues = userLeagues.reduce((acc: { active: League[], upcoming: League[], archived: League[] }, league: League) => {
-      // Create copies of the league for each category
-      const activeLeague = { ...league, sessions: [] };
-      const upcomingLeague = { ...league, sessions: [] };
-      const archivedLeague = { ...league, sessions: [] };
+    type CategorizedLeagues = {
+      active: League[];
+      upcoming: League[];
+      archived: League[];
+    };
+    
+    const categorizedLeagues = userLeagues.reduce<CategorizedLeagues>(
+      (acc, league: League) => {
+        // Create copies of the league for each category
+        const activeLeague = { ...league, sessions: [] };
+        const upcomingLeague = { ...league, sessions: [] };
+        const archivedLeague = { ...league, sessions: [] };
 
-      // Categorize each session
-      league.sessions.forEach(session => {
-        if (!session.schedule || session.schedule.length === 0) return;
+        // Categorize each session
+        league.sessions.forEach(session => {
+          if (!session.schedule || session.schedule.length === 0) return;
 
-        const firstDate = new Date(session.schedule[0].date);
-        const lastDate = new Date(session.schedule[session.schedule.length - 1].date);
-        firstDate.setHours(0, 0, 0, 0);
-        lastDate.setHours(0, 0, 0, 0);
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
+          const firstDate = new Date(session.schedule[0].date);
+          const lastDate = new Date(session.schedule[session.schedule.length - 1].date);
+          firstDate.setHours(0, 0, 0, 0);
+          lastDate.setHours(0, 0, 0, 0);
+          const now = new Date();
+          now.setHours(0, 0, 0, 0);
 
-        if (firstDate > now) {
-          upcomingLeague.sessions.push(session);
-        } else if (lastDate < now) {
-          archivedLeague.sessions.push(session);
-        } else {
-          activeLeague.sessions.push(session);
+          if (firstDate > now) {
+            upcomingLeague.sessions.push(session);
+          } else if (lastDate < now) {
+            archivedLeague.sessions.push(session);
+          } else {
+            activeLeague.sessions.push(session);
+          }
+        });
+
+        // Only add leagues to categories if they have sessions
+        if (activeLeague.sessions.length > 0) {
+          acc.active.push(activeLeague);
         }
-      });
+        if (upcomingLeague.sessions.length > 0) {
+          acc.upcoming.push(upcomingLeague);
+        }
+        if (archivedLeague.sessions.length > 0) {
+          acc.archived.push(archivedLeague);
+        }
 
-      // Only add leagues to categories if they have sessions
-      if (activeLeague.sessions.length > 0) {
-        acc.active.push(activeLeague);
-      }
-      if (upcomingLeague.sessions.length > 0) {
-        acc.upcoming.push(upcomingLeague);
-      }
-      if (archivedLeague.sessions.length > 0) {
-        acc.archived.push(archivedLeague);
-      }
-
-      return acc;
-    }, { active: [], upcoming: [], archived: [] });
+        return acc;
+      }, 
+      { active: [], upcoming: [], archived: [] }
+    );
 
     console.log('Categorized leagues:', {
       active: categorizedLeagues.active.map((l: League) => ({ name: l.name, sessions: l.sessions.map(s => s.sessionName) })),
