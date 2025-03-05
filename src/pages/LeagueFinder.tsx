@@ -41,25 +41,39 @@ const TIMEZONES = [
 
 // Function to transform backend league data to frontend League type
 const transformBackendLeagueData = (backendLeagues: any[]): League[] => {
+  console.log("Raw backend leagues data:", backendLeagues);
+  
+  if (!Array.isArray(backendLeagues)) {
+    console.error("Backend leagues data is not an array:", backendLeagues);
+    return [];
+  }
+  
   return backendLeagues.map(backendLeague => {
+    console.log("Processing backend league:", backendLeague);
+    
     // Transform sessions
-    const transformedSessions: LeagueSession[] = backendLeague.sessions?.map((session: any) => ({
-      id: typeof session._id === 'string' ? parseInt(session._id.substring(0, 8), 16) : Date.now(),
-      parentLeagueId: typeof backendLeague._id === 'string' ? parseInt(backendLeague._id.substring(0, 8), 16) : Date.now(),
-      name: session.name,
-      sessionName: session.name,
-      location: backendLeague.location || '',
-      password: '',  // We don't store passwords in the backend response
-      teams: session.teams || [],
-      type: backendLeague.leagueType === 'team' ? 'team' : 'singles',
-      gameType: backendLeague.gameType || '',
-      schedule: [],  // Would need to transform date format if available
-      createdBy: typeof backendLeague.createdBy === 'string' ? backendLeague.createdBy : 'unknown',
-      createdAt: session.createdAt || new Date().toISOString()
-    })) || [];
+    const transformedSessions: LeagueSession[] = backendLeague.sessions?.map((session: any) => {
+      console.log("Processing session:", session);
+      return {
+        id: typeof session._id === 'string' ? parseInt(session._id.substring(0, 8), 16) : Date.now(),
+        parentLeagueId: typeof backendLeague._id === 'string' ? parseInt(backendLeague._id.substring(0, 8), 16) : Date.now(),
+        name: session.name,
+        sessionName: session.name,
+        location: backendLeague.location || '',
+        password: '',  // We don't store passwords in the backend response
+        teams: session.teams || [],
+        type: backendLeague.leagueType === 'team' ? 'team' : 'singles',
+        gameType: backendLeague.gameType || '',
+        schedule: [],  // Would need to transform date format if available
+        createdBy: typeof backendLeague.createdBy === 'string' ? backendLeague.createdBy : 'unknown',
+        createdAt: session.createdAt || new Date().toISOString()
+      };
+    }) || [];
+    
+    console.log("Transformed sessions:", transformedSessions);
 
     // Transform league
-    return {
+    const transformedLeague = {
       id: typeof backendLeague._id === 'string' ? parseInt(backendLeague._id.substring(0, 8), 16) : Date.now(),
       name: backendLeague.name,
       sessions: transformedSessions,
@@ -67,6 +81,9 @@ const transformBackendLeagueData = (backendLeagues: any[]): League[] => {
       createdBy: typeof backendLeague.createdBy === 'string' ? backendLeague.createdBy : 'unknown',
       createdAt: backendLeague.createdAt || new Date().toISOString()
     };
+    
+    console.log("Transformed league:", transformedLeague);
+    return transformedLeague;
   });
 };
 
@@ -85,8 +102,10 @@ const LeagueFinder = () => {
     const fetchLeagues = async () => {
       setIsLoading(true);
       try {
+        console.log("Fetching leagues from API...");
         // Try to fetch from the API first
         const response = await fetch(`${API_URL}/leagues`);
+        console.log("API response status:", response.status);
         
         if (response.ok) {
           const data = await response.json();
@@ -96,11 +115,16 @@ const LeagueFinder = () => {
           const transformedLeagues = transformBackendLeagueData(data);
           console.log("Transformed leagues data:", transformedLeagues);
           
+          if (transformedLeagues.length === 0) {
+            console.warn("No leagues found in API response or transformation resulted in empty array");
+          }
+          
           setLeagues(transformedLeagues);
         } else {
           // Fall back to localStorage if API fails
           console.warn("Failed to fetch leagues from API, falling back to localStorage");
           const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+          console.log("Leagues from localStorage:", allLeagues);
           setLeagues(allLeagues);
         }
         
@@ -113,21 +137,33 @@ const LeagueFinder = () => {
           if (token) {
             // Try to fetch teams from API
             try {
+              console.log("Testing teams API endpoint...");
+              // First test if the teams endpoint is working at all
+              const testResponse = await fetch(`${API_URL}/teams/test`);
+              console.log("Teams test endpoint response:", testResponse.status);
+              
+              // Now try to fetch user teams
+              console.log("Fetching user teams from API...");
               const teamsResponse = await fetch(`${API_URL}/teams/user`, {
                 headers: {
                   'Authorization': `Bearer ${token}`
                 }
               });
               
+              console.log("Teams user endpoint response status:", teamsResponse.status);
+              
               if (teamsResponse.ok) {
                 const teamsData = await teamsResponse.json();
+                console.log("User teams from API:", teamsData);
                 setUserTeams(teamsData);
               } else {
+                console.warn(`Failed to fetch teams from API (status: ${teamsResponse.status}), falling back to localStorage`);
                 // Fall back to localStorage
                 const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
                 const userTeams = allTeams.filter((team: Team) => 
                   team.createdBy === username || team.members.includes(username)
                 );
+                console.log("User teams from localStorage:", userTeams);
                 setUserTeams(userTeams);
               }
             } catch (error) {
@@ -137,14 +173,17 @@ const LeagueFinder = () => {
               const userTeams = allTeams.filter((team: Team) => 
                 team.createdBy === username || team.members.includes(username)
               );
+              console.log("User teams from localStorage (after error):", userTeams);
               setUserTeams(userTeams);
             }
           } else {
             // No token, use localStorage
+            console.log("No token found, using localStorage for teams");
             const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
             const userTeams = allTeams.filter((team: Team) => 
               team.createdBy === username || team.members.includes(username)
             );
+            console.log("User teams from localStorage (no token):", userTeams);
             setUserTeams(userTeams);
           }
         }
