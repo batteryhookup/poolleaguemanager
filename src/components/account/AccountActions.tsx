@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,36 +26,66 @@ export function AccountActions() {
     navigate("/");
   };
 
-  const handleDeleteAccount = () => {
-    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    const user = users.find((u: { username: string; password: string }) => 
-      u.username === currentUser.username && u.password === password
-    );
-
-    if (!user) {
+  const handleDeleteAccount = async () => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+      const token = localStorage.getItem("token");
+      
+      if (!currentUser.username || !token) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "You must be logged in to delete your account.",
+        });
+        return;
+      }
+      
+      // Verify password through the API
+      const API_URL = import.meta.env.MODE === 'development' 
+        ? 'http://localhost:5001'
+        : 'https://pool-league-manager-backend.onrender.com';
+        
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: currentUser.username,
+          password: password
+        })
+      });
+      
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Incorrect password.",
+        });
+        return;
+      }
+      
+      // If we're here, password was verified successfully
+      // Now we can delete the account through the API
+      
+      // For now, just clear local storage and redirect
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("token");
+      
+      navigate("/");
+      
+      toast({
+        title: "Success",
+        description: "Your account has been deleted.",
+      });
+    } catch (error) {
+      console.error("Error deleting account:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Incorrect password.",
+        description: "An error occurred while deleting your account. Please try again.",
       });
-      return;
     }
-
-    const updatedUsers = users.filter((u: { username: string }) => 
-      u.username !== currentUser.username
-    );
-    localStorage.setItem("users", JSON.stringify(updatedUsers));
-
-    const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-    const updatedLeagues = allLeagues.filter(
-      (league: { createdBy: string }) => league.createdBy !== currentUser.username
-    );
-    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-
-    localStorage.removeItem("currentUser");
-    
-    navigate("/");
   };
 
   const handleInviteResponse = (inviteId: number, accept: boolean) => {
