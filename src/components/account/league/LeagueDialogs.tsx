@@ -77,7 +77,7 @@ export function LeagueDialogs({
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent onCleanup={() => setDeleteLeaguePassword("")}>
           <DialogHeader>
-            <DialogTitle>Delete League</DialogTitle>
+            <DialogTitle>Delete Session</DialogTitle>
             <DialogDescription>
               To delete this session, please enter the session password.
             </DialogDescription>
@@ -97,7 +97,7 @@ export function LeagueDialogs({
               onClick={handleDeleteLeague}
               className="w-full"
             >
-              Delete League
+              Delete Session
             </Button>
           </div>
         </DialogContent>

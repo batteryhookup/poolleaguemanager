@@ -551,3 +551,171 @@ export const updateLeague = (
   
   window.dispatchEvent(new Event('leagueUpdate'));
 };
+
+export const deleteSession = async (
+  session: LeagueSession,
+  password: string,
+  leagues: League[],
+  setLeagues: React.Dispatch<React.SetStateAction<League[]>>
+): Promise<boolean> => {
+  // Check if the password matches
+  if (session.password !== password) {
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Incorrect session password.",
+    });
+    return false;
+  }
+
+  try {
+    // Find the parent league
+    const parentLeague = leagues.find(league => league.id === session.parentLeagueId);
+    if (!parentLeague) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Parent league not found.",
+      });
+      return false;
+    }
+
+    // Get token from localStorage
+    const token = localStorage.getItem('token');
+    
+    if (token) {
+      try {
+        // Find the backend ID for this league and session
+        const allBackendLeagues = await fetch(`${API_URL}/leagues`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }).then(res => res.json());
+        
+        const backendLeague = allBackendLeagues.find((bl: any) => 
+          bl.name === parentLeague.name
+        );
+        
+        if (!backendLeague) {
+          console.warn("Could not find backend league, falling back to localStorage");
+          return deleteSessionLocalStorage(session, leagues, setLeagues);
+        }
+        
+        // Find the session in the backend league
+        const backendSession = backendLeague.sessions.find((s: any) => 
+          s.name === session.name || s.name === session.sessionName
+        );
+        
+        if (!backendSession) {
+          console.warn("Could not find backend session, falling back to localStorage");
+          return deleteSessionLocalStorage(session, leagues, setLeagues);
+        }
+        
+        // Try to delete session via API
+        const response = await fetch(`${API_URL}/leagues/${backendLeague._id}/sessions/${backendSession._id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          console.log("Session deleted via API");
+          
+          // Update local state
+          const updatedLeagues = leagues.map(league => {
+            if (league.id === parentLeague.id) {
+              return {
+                ...league,
+                sessions: league.sessions.filter(s => s.id !== session.id)
+              };
+            }
+            return league;
+          });
+          
+          setLeagues(updatedLeagues);
+          localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+          
+          toast({
+            title: "Success",
+            description: "Session deleted successfully!",
+          });
+          
+          window.dispatchEvent(new Event('leagueUpdate'));
+          return true;
+        } else {
+          // Fall back to localStorage if API fails
+          console.warn("Failed to delete session via API, falling back to localStorage");
+          return deleteSessionLocalStorage(session, leagues, setLeagues);
+        }
+      } catch (error) {
+        console.error("Error deleting session via API:", error);
+        return deleteSessionLocalStorage(session, leagues, setLeagues);
+      }
+    } else {
+      // No token, use localStorage
+      return deleteSessionLocalStorage(session, leagues, setLeagues);
+    }
+  } catch (error) {
+    console.error("Error in deleteSession:", error);
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Failed to delete session. Please try again.",
+    });
+    return false;
+  }
+};
+
+// Fallback function that uses localStorage
+const deleteSessionLocalStorage = (
+  session: LeagueSession,
+  leagues: League[],
+  setLeagues: React.Dispatch<React.SetStateAction<League[]>>
+): boolean => {
+  try {
+    // Find the parent league
+    const parentLeague = leagues.find(league => league.id === session.parentLeagueId);
+    if (!parentLeague) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Parent league not found.",
+      });
+      return false;
+    }
+
+    // Update the league with the session removed
+    const updatedLeagues = leagues.map(league => {
+      if (league.id === parentLeague.id) {
+        return {
+          ...league,
+          sessions: league.sessions.filter(s => s.id !== session.id)
+        };
+      }
+      return league;
+    });
+
+    // Update state and localStorage
+    setLeagues(updatedLeagues);
+    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+
+    // Dispatch custom event for other components to listen to
+    window.dispatchEvent(new Event('leagueUpdate'));
+
+    toast({
+      title: "Success",
+      description: "Session deleted successfully!",
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error deleting session:", error);
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Failed to delete session. Please try again.",
+    });
+    return false;
+  }
+};

@@ -15,6 +15,7 @@ import {
   addTeam,
   deleteTeam,
   updateLeague,
+  deleteSession
 } from "./league/LeagueOperations";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
@@ -120,75 +121,37 @@ export function LeagueManagement({
   const handleDeleteLeague = (password: string) => {
     if (!selectedSession) return;
     
-    // Find the parent league of the selected session
-    const allLeagues = [...leagues, ...upcomingLeagues, ...archivedLeagues];
-    const parentLeague = allLeagues.find(league => 
-      league.sessions.some(session => session.id === selectedSession.id)
-    );
-    
-    if (!parentLeague) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Parent league not found.",
-      });
-      return;
-    }
-
-    // Create a new league with the session removed
-    const updatedLeague = {
-      ...parentLeague,
-      sessions: parentLeague.sessions.filter(session => session.id !== selectedSession.id)
-    };
-
-    // If this was the last session, delete the entire league
-    if (updatedLeague.sessions.length === 0) {
-      console.log("Deleting entire league:", parentLeague.name);
-      const success = deleteLeague(parentLeague, password, leagues, setLeagues);
-      
-      if (success) {
-        // Reset selected session and team
-        setSelectedSession(null);
-        setSelectedTeam(null);
-        
-        // Close the dialog
-        setIsDeleteLeagueDialogOpen(false);
-        
-        // Force a refresh of the league lists without using hash navigation
-        setTimeout(() => {
-          // Use a more direct approach to refresh the component state
-          const currentTab = activeTab;
-          setActiveTab('active');
+    // Use the new deleteSession function
+    deleteSession(selectedSession, password, leagues, setLeagues)
+      .then(success => {
+        if (success) {
+          // Reset selected session and team
+          setSelectedSession(null);
+          setSelectedTeam(null);
+          
+          // Close the dialog
+          setIsDeleteDialogOpen(false);
+          
+          // Force a refresh of the league lists without using hash navigation
           setTimeout(() => {
-            setActiveTab(currentTab);
-            window.dispatchEvent(new Event('leagueUpdate'));
-          }, 50);
-        }, 100);
-      }
-      return;
-    }
-
-    // Otherwise, update the league with the session removed
-    console.log("Removing session from league:", selectedSession.sessionName);
-    updateLeague(updatedLeague, leagues, setLeagues);
-    
-    // Reset selected session and team
-    setSelectedSession(null);
-    setSelectedTeam(null);
-    
-    // Close the dialog
-    setIsDeleteLeagueDialogOpen(false);
-    
-    // Force a refresh of the league lists without using hash navigation
-    setTimeout(() => {
-      // Use a more direct approach to refresh the component state
-      const currentTab = activeTab;
-      setActiveTab('active');
-      setTimeout(() => {
-        setActiveTab(currentTab);
-        window.dispatchEvent(new Event('leagueUpdate'));
-      }, 50);
-    }, 100);
+            // Use a more direct approach to refresh the component state
+            const currentTab = activeTab;
+            setActiveTab('active');
+            setTimeout(() => {
+              setActiveTab(currentTab);
+              window.dispatchEvent(new Event('leagueUpdate'));
+            }, 50);
+          }, 100);
+        }
+      })
+      .catch(error => {
+        console.error("Error deleting session:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to delete session. Please try again.",
+        });
+      });
   };
 
   const handleAddTeam = (teamName: string) => {
