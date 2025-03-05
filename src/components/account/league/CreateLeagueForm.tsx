@@ -131,58 +131,28 @@ export function CreateLeagueForm({ onSubmit, onClose }: CreateLeagueFormProps) {
       
       const currentUser = JSON.parse(currentUserData);
       
+      // Create a new session object
+      const newSession = {
+        id: sessionId,
+        name: leagueName,
+        sessionName: sessionName,
+        parentLeagueId: selectedLeagueId === "new" ? leagueId : selectedLeagueId,
+        password: sessionPassword,
+        teams: [],
+        schedule: schedule,
+        createdAt: new Date().toISOString(),
+        createdBy: currentUser.username,
+        location: leagueLocation,
+        type: leagueType,
+        gameType: finalGameType,
+        ...(leagueType === "team" && {
+          maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
+          playersPerNight: parseInt(playersPerNight),
+        }),
+      };
+      
       // Check if we're creating a new league or adding to existing
       if (selectedLeagueId === "new") {
-        // Check if a league with this name already exists (case insensitive)
-        const existingLeague = allLeagues.find(
-          league => 
-            league.name.toLowerCase() === leagueName.toLowerCase() && 
-            league.createdBy.toLowerCase() === currentUser.username.toLowerCase()
-        );
-        
-        if (existingLeague) {
-          console.log(`League with name "${leagueName}" already exists, adding session to it instead`);
-          
-          // Create a new session for the existing league with a guaranteed unique ID
-          const newSession = {
-            id: sessionId,
-            name: existingLeague.name,
-            sessionName: sessionName,
-            parentLeagueId: existingLeague.id,
-            password: sessionPassword,
-            teams: [],
-            schedule: schedule,
-            createdAt: new Date().toISOString(),
-            createdBy: currentUser.username,
-            location: leagueLocation,
-            type: leagueType,
-            gameType: finalGameType,
-            ...(leagueType === "team" && {
-              maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
-              playersPerNight: parseInt(playersPerNight),
-            }),
-          };
-          
-          console.log("Adding session to existing league:", newSession);
-          
-          // Add the session to the existing league
-          createLeagueSession(newSession, leagues, setLeagues);
-          
-          // Reset form
-          resetForm();
-          onClose();
-          
-          // Call the onSubmit callback with the existing league and the new session
-          const updatedLeague = {
-            ...existingLeague,
-            sessions: [...existingLeague.sessions, newSession]
-          };
-          
-          onSubmit(updatedLeague);
-          
-          return;
-        }
-        
         // Creating a new league with a new session
         const newLeague: League = {
           id: leagueId,
@@ -190,30 +160,10 @@ export function CreateLeagueForm({ onSubmit, onClose }: CreateLeagueFormProps) {
           password: leaguePassword,
           createdAt: new Date().toISOString(),
           createdBy: currentUser.username,
-          sessions: [
-            {
-              id: sessionId,
-              name: leagueName,
-              sessionName: sessionName,
-              parentLeagueId: leagueId,
-              password: sessionPassword,
-              teams: [],
-              schedule: schedule,
-              createdAt: new Date().toISOString(),
-              createdBy: currentUser.username,
-              location: leagueLocation,
-              type: leagueType,
-              gameType: finalGameType,
-              ...(leagueType === "team" && {
-                maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
-                playersPerNight: parseInt(playersPerNight),
-              }),
-            },
-          ],
+          sessions: [newSession],
         };
         
         console.log("Creating new league:", newLeague);
-        createLeague(newLeague, leagues, setLeagues);
         
         // Reset form
         resetForm();
@@ -235,43 +185,23 @@ export function CreateLeagueForm({ onSubmit, onClose }: CreateLeagueFormProps) {
           return;
         }
         
-        const newSession: LeagueSession = {
-          id: sessionId,
-          name: selectedLeague.name,
-          sessionName: sessionName,
-          parentLeagueId: selectedLeague.id,
-          password: sessionPassword,
-          teams: [],
-          schedule: schedule,
-          createdAt: new Date().toISOString(),
-          createdBy: currentUser.username,
-          location: leagueLocation,
-          type: leagueType,
-          gameType: finalGameType,
-          ...(leagueType === "team" && {
-            maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
-            playersPerNight: parseInt(playersPerNight),
-          }),
-        };
-        
         console.log("Adding new session to existing league:", {
           leagueId: selectedLeague.id,
           leagueName: selectedLeague.name,
           newSession
         });
         
-        createLeagueSession(newSession, leagues, setLeagues);
+        // Create an updated league object with the new session
+        const updatedLeague = {
+          ...selectedLeague,
+          sessions: [...selectedLeague.sessions, newSession]
+        };
         
         // Reset form
         resetForm();
         onClose();
         
         // Call the onSubmit callback with the updated league
-        const updatedLeague = {
-          ...selectedLeague,
-          sessions: [...selectedLeague.sessions, newSession]
-        };
-        
         onSubmit(updatedLeague);
       }
     } catch (error) {
