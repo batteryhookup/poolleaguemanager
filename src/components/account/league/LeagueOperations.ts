@@ -18,6 +18,30 @@ const generateNumericId = (): number => {
 
 // Helper function to transform frontend League to backend format
 const transformLeagueForBackend = (league: League) => {
+  console.log("Transforming league for backend:", league);
+  
+  // Get current user from localStorage
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+  
+  // Ensure we have valid session data
+  const validSessions = league.sessions.map(session => {
+    // Create a default schedule if none exists
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const startDate = new Date();
+    const endDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 90 days from now
+    
+    return {
+      name: session.sessionName || session.name,
+      startDate: startDate,
+      endDate: endDate,
+      teams: Array.isArray(session.teams) ? session.teams : [],
+      matches: [],
+      standings: []
+    };
+  });
+  
   return {
     name: league.name,
     location: league.sessions[0]?.location || "Unknown",
@@ -25,14 +49,9 @@ const transformLeagueForBackend = (league: League) => {
     leagueType: league.sessions[0]?.type || "singles",
     schedule: "Weekly", // Default value
     status: "active",
-    sessions: league.sessions.map(session => ({
-      name: session.sessionName || session.name,
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
-      teams: session.teams || [],
-      matches: [],
-      standings: []
-    }))
+    sessions: validSessions,
+    // Include the user ID for the backend
+    createdBy: currentUser.id || null
   };
 };
 
@@ -104,16 +123,24 @@ export const createLeague = async (
               type: createdLeague.leagueType === 'team' ? 'team' : 'singles',
               gameType: createdLeague.gameType || '',
               schedule: [],
-              createdBy: typeof createdLeague.createdBy === 'string' ? createdLeague.createdBy : 'unknown',
+              createdBy: JSON.parse(localStorage.getItem("currentUser") || "{}").username || "unknown",
               createdAt: session.createdAt || new Date().toISOString()
             })) || [],
             password: '',
-            createdBy: typeof createdLeague.createdBy === 'string' ? createdLeague.createdBy : 'unknown',
+            createdBy: JSON.parse(localStorage.getItem("currentUser") || "{}").username || "unknown",
             createdAt: createdLeague.createdAt || new Date().toISOString()
           };
           
           // Update local state
           setLeagues(prevLeagues => [...prevLeagues, frontendLeague]);
+          
+          // IMPORTANT: Also update localStorage with the new league
+          const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+          const updatedLeagues = [...existingLeagues, frontendLeague];
+          localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+          
+          // Dispatch custom event for other components to listen to
+          window.dispatchEvent(new CustomEvent("leaguesUpdated", { detail: updatedLeagues }));
           
           toast({
             title: "Success",
@@ -154,20 +181,38 @@ const createLeagueLocalStorage = (
   setLeagues: React.Dispatch<React.SetStateAction<League[]>>,
   onSuccess?: () => void
 ): League => {
+  // Get current user from localStorage
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+  const currentUsername = currentUser.username || "unknown";
+  
+  // Ensure createdBy is set to the current username
+  const leagueWithCorrectCreator = {
+    ...newLeague,
+    createdBy: currentUsername,
+    sessions: newLeague.sessions.map(session => ({
+      ...session,
+      createdBy: currentUsername
+    }))
+  };
+  
   // Generate a unique ID if not provided
   const leagueWithId: League = {
-    ...newLeague,
+    ...leagueWithCorrectCreator,
     id: newLeague.id || generateNumericId(),
     createdAt: new Date().toISOString(),
   };
+  
+  console.log("Creating league in localStorage:", leagueWithId);
 
   // Update state and localStorage
   const updatedLeagues = [...leagues, leagueWithId];
   setLeagues(updatedLeagues);
   localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+  console.log("Updated localStorage with new league. Total leagues:", updatedLeagues.length);
 
   // Dispatch custom event for other components to listen to
   window.dispatchEvent(new CustomEvent("leaguesUpdated", { detail: updatedLeagues }));
+  console.log("Dispatched leaguesUpdated event");
 
   toast({
     title: "Success",
@@ -187,25 +232,12 @@ export const createLeagueSession = async (
   onSuccess?: () => void
 ): Promise<LeagueSession | null> => {
   try {
-    // Find the league
-    const leagueIndex = leagues.findIndex(league => league.id === leagueId);
-    if (leagueIndex === -1) {
+    // Find the parent league
+    const parentLeague = leagues.find(league => league.id === leagueId);
+    if (!parentLeague) {
       toast({
         title: "Error",
-        description: "League not found.",
-        variant: "destructive",
-      });
-      return null;
-    }
-
-    const league = leagues[leagueIndex];
-
-    // Check if a session with the same name already exists
-    const existingSession = league.sessions?.find(session => session.name === newSession.name);
-    if (existingSession) {
-      toast({
-        title: "Error",
-        description: "A session with this name already exists in this league.",
+        description: "Parent league not found.",
         variant: "destructive",
       });
       return null;
@@ -217,7 +249,6 @@ export const createLeagueSession = async (
     if (token) {
       try {
         // Find the backend ID for this league
-        // This is a bit of a hack - we're assuming the backend ID is stored in localStorage
         const allBackendLeagues = await fetch(`${API_URL}/leagues`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -225,7 +256,7 @@ export const createLeagueSession = async (
         }).then(res => res.json());
         
         const backendLeague = allBackendLeagues.find((bl: any) => 
-          bl.name === league.name
+          bl.name === parentLeague.name
         );
         
         if (!backendLeague) {
@@ -235,7 +266,6 @@ export const createLeagueSession = async (
         
         // Transform the session data for the backend
         const backendSessionData = transformSessionForBackend(newSession);
-        console.log("Sending session data to backend:", backendSessionData);
         
         // Try to create session via API
         const response = await fetch(`${API_URL}/leagues/${backendLeague._id}/sessions`, {
@@ -249,7 +279,6 @@ export const createLeagueSession = async (
         
         if (response.ok) {
           const createdSession = await response.json();
-          console.log("Backend response for created session:", createdSession);
           
           // Transform the backend response to frontend format
           const frontendSession: LeagueSession = {
@@ -257,23 +286,36 @@ export const createLeagueSession = async (
             parentLeagueId: leagueId,
             name: createdSession.name,
             sessionName: createdSession.name,
-            location: league.sessions[0]?.location || '',
+            location: parentLeague.sessions[0]?.location || '',
             password: '',
             teams: createdSession.teams || [],
-            type: league.sessions[0]?.type || 'singles',
-            gameType: league.sessions[0]?.gameType || '8-ball',
+            type: parentLeague.sessions[0]?.type || 'singles',
+            gameType: parentLeague.sessions[0]?.gameType || '',
             schedule: [],
-            createdBy: league.createdBy,
+            createdBy: JSON.parse(localStorage.getItem("currentUser") || "{}").username || "unknown",
             createdAt: createdSession.createdAt || new Date().toISOString()
           };
           
           // Update local state
-          const updatedLeagues = [...leagues];
-          if (!updatedLeagues[leagueIndex].sessions) {
-            updatedLeagues[leagueIndex].sessions = [];
-          }
-          updatedLeagues[leagueIndex].sessions.push(frontendSession);
+          const updatedLeagues = leagues.map(league => {
+            if (league.id === leagueId) {
+              return {
+                ...league,
+                sessions: [...league.sessions, frontendSession]
+              };
+            }
+            return league;
+          });
+          
           setLeagues(updatedLeagues);
+          
+          // IMPORTANT: Also update localStorage with the new session
+          localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+          console.log("Updated localStorage with new session. Total leagues:", updatedLeagues.length);
+          
+          // Dispatch custom event for other components to listen to
+          window.dispatchEvent(new CustomEvent("leaguesUpdated", { detail: updatedLeagues }));
+          console.log("Dispatched leaguesUpdated event with updated leagues");
           
           toast({
             title: "Success",
@@ -315,13 +357,25 @@ const createLeagueSessionLocalStorage = (
   setLeagues: React.Dispatch<React.SetStateAction<League[]>>,
   onSuccess?: () => void
 ): LeagueSession => {
+  // Get current user from localStorage
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+  const currentUsername = currentUser.username || "unknown";
+  
+  // Ensure createdBy is set to the current username
+  const sessionWithCreator = {
+    ...newSession,
+    createdBy: currentUsername,
+    parentLeagueId: leagueId
+  };
+  
   // Generate a unique ID if not provided
   const sessionWithId: LeagueSession = {
-    ...newSession,
+    ...sessionWithCreator,
     id: newSession.id || generateNumericId(),
-    parentLeagueId: leagueId,
     createdAt: new Date().toISOString(),
   };
+  
+  console.log("Creating session in localStorage:", sessionWithId);
 
   // Update the league with the new session
   const updatedLeagues = leagues.map(league => {
@@ -337,9 +391,11 @@ const createLeagueSessionLocalStorage = (
   // Update state and localStorage
   setLeagues(updatedLeagues);
   localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+  console.log("Updated localStorage with new session. Total leagues:", updatedLeagues.length);
 
   // Dispatch custom event for other components to listen to
   window.dispatchEvent(new CustomEvent("leaguesUpdated", { detail: updatedLeagues }));
+  console.log("Dispatched leaguesUpdated event with updated leagues");
 
   toast({
     title: "Success",
