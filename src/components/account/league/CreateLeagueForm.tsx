@@ -97,7 +97,7 @@ export function CreateLeagueForm({ onSubmit, onClose }: CreateLeagueFormProps) {
         setIsSubmitting(false);
         return;
       }
-
+      
       if (!sessionPassword) {
         toast({
           variant: "destructive",
@@ -110,8 +110,26 @@ export function CreateLeagueForm({ onSubmit, onClose }: CreateLeagueFormProps) {
       
       const finalGameType = gameType === "specify" ? customGameType : gameType;
       
-      // Generate a truly unique ID using timestamp and random number
-      const uniqueId = Date.now() + Math.floor(Math.random() * 1000);
+      // Generate unique IDs for the league and session
+      // Use separate IDs for league and session to avoid conflicts
+      const leagueId = Date.now();
+      const sessionId = leagueId + 1; // Ensure session ID is different
+      
+      console.log(`Generated IDs - League: ${leagueId}, Session: ${sessionId}`);
+      
+      // Validate current user
+      const currentUserData = localStorage.getItem("currentUser");
+      if (!currentUserData) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "You must be logged in to create a league.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const currentUser = JSON.parse(currentUserData);
       
       // Check if we're creating a new league or adding to existing
       if (selectedLeagueId === "new") {
@@ -125,9 +143,9 @@ export function CreateLeagueForm({ onSubmit, onClose }: CreateLeagueFormProps) {
         if (existingLeague) {
           console.log(`League with name "${leagueName}" already exists, adding session to it instead`);
           
-          // Create a new session for the existing league
+          // Create a new session for the existing league with a guaranteed unique ID
           const newSession = {
-            id: uniqueId,
+            id: sessionId,
             name: existingLeague.name,
             sessionName: sessionName,
             parentLeagueId: existingLeague.id,
@@ -145,6 +163,8 @@ export function CreateLeagueForm({ onSubmit, onClose }: CreateLeagueFormProps) {
             }),
           };
           
+          console.log("Adding session to existing league:", newSession);
+          
           // Add the session to the existing league
           createLeagueSession(newSession, leagues, setLeagues);
           
@@ -152,28 +172,30 @@ export function CreateLeagueForm({ onSubmit, onClose }: CreateLeagueFormProps) {
           resetForm();
           onClose();
           
-          // Call the onSubmit callback with the existing league
-          onSubmit({
+          // Call the onSubmit callback with the existing league and the new session
+          const updatedLeague = {
             ...existingLeague,
             sessions: [...existingLeague.sessions, newSession]
-          });
+          };
+          
+          onSubmit(updatedLeague);
           
           return;
         }
         
         // Creating a new league with a new session
         const newLeague: League = {
-          id: uniqueId,
+          id: leagueId,
           name: leagueName,
           password: leaguePassword,
           createdAt: new Date().toISOString(),
           createdBy: currentUser.username,
           sessions: [
             {
-              id: uniqueId + 1, // Ensure session ID is different from league ID
+              id: sessionId,
               name: leagueName,
               sessionName: sessionName,
-              parentLeagueId: uniqueId,
+              parentLeagueId: leagueId,
               password: sessionPassword,
               teams: [],
               schedule: schedule,
@@ -192,6 +214,13 @@ export function CreateLeagueForm({ onSubmit, onClose }: CreateLeagueFormProps) {
         
         console.log("Creating new league:", newLeague);
         createLeague(newLeague, leagues, setLeagues);
+        
+        // Reset form
+        resetForm();
+        onClose();
+        
+        // Call the onSubmit callback with the new league
+        onSubmit(newLeague);
       } else {
         // Adding a new session to an existing league
         const selectedLeague = uniqueUserLeagues.find(league => league.id === selectedLeagueId);
@@ -207,7 +236,7 @@ export function CreateLeagueForm({ onSubmit, onClose }: CreateLeagueFormProps) {
         }
         
         const newSession: LeagueSession = {
-          id: uniqueId,
+          id: sessionId,
           name: selectedLeague.name,
           sessionName: sessionName,
           parentLeagueId: selectedLeague.id,
@@ -232,21 +261,19 @@ export function CreateLeagueForm({ onSubmit, onClose }: CreateLeagueFormProps) {
         });
         
         createLeagueSession(newSession, leagues, setLeagues);
+        
+        // Reset form
+        resetForm();
+        onClose();
+        
+        // Call the onSubmit callback with the updated league
+        const updatedLeague = {
+          ...selectedLeague,
+          sessions: [...selectedLeague.sessions, newSession]
+        };
+        
+        onSubmit(updatedLeague);
       }
-      
-      // Reset form
-      resetForm();
-      onClose();
-      
-      // Call the onSubmit callback to notify the parent component
-      onSubmit({
-        id: uniqueId,
-        name: leagueName,
-        password: leaguePassword,
-        createdAt: new Date().toISOString(),
-        createdBy: currentUser.username,
-        sessions: []
-      });
     } catch (error) {
       console.error("Error creating league:", error);
       toast({

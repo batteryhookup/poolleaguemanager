@@ -69,14 +69,34 @@ export function LeagueManagement({
     if (existingLeague) {
       console.log(`Updating existing league: ${existingLeague.name}`);
       
-      // Check if we're adding new sessions
-      const newSessions = newLeague.sessions.filter(newSession => 
-        !existingLeague.sessions.some(existingSession => 
-          existingSession.id === newSession.id || 
-          (existingSession.sessionName === newSession.sessionName && 
-           existingSession.parentLeagueId === newSession.parentLeagueId)
-        )
-      );
+      // Check if we're adding new sessions - FIXED COMPARISON LOGIC
+      const newSessions = newLeague.sessions.filter(newSession => {
+        // Log the session we're checking
+        console.log("Checking if session is new:", newSession);
+        
+        // Check if this session already exists in the existing league
+        const sessionExists = existingLeague.sessions.some(existingSession => {
+          const idMatch = existingSession.id === newSession.id;
+          const nameMatch = existingSession.sessionName === newSession.sessionName;
+          
+          console.log(`Comparing with existing session:`, {
+            existingId: existingSession.id,
+            newId: newSession.id,
+            idMatch,
+            existingName: existingSession.sessionName,
+            newName: newSession.sessionName,
+            nameMatch
+          });
+          
+          // Only consider it a match if BOTH id AND name match
+          return idMatch;
+        });
+        
+        console.log(`Session ${newSession.sessionName} exists: ${sessionExists}`);
+        return !sessionExists;
+      });
+      
+      console.log(`Found ${newSessions.length} new sessions to add`);
       
       if (newSessions.length > 0) {
         console.log(`Adding ${newSessions.length} new sessions to existing league`);
@@ -112,10 +132,28 @@ export function LeagueManagement({
         });
       } else {
         console.log("No new sessions found to add");
-        toast({
-          title: "Info",
-          description: "No new sessions were added to the league.",
-        });
+        
+        // Check if the league in localStorage matches the one in state
+        const leagueInState = leagues.find(l => l.id === existingLeague.id);
+        if (leagueInState && JSON.stringify(leagueInState) !== JSON.stringify(existingLeague)) {
+          console.log("League in state doesn't match localStorage, updating state");
+          setLeagues(prevLeagues => 
+            prevLeagues.map(league => league.id === existingLeague.id ? existingLeague : league)
+          );
+          
+          // Trigger a refresh
+          window.dispatchEvent(new Event('leagueUpdate'));
+          
+          toast({
+            title: "Success",
+            description: `Updated league: ${existingLeague.name}`,
+          });
+        } else {
+          toast({
+            title: "Info",
+            description: "No new sessions were added to the league.",
+          });
+        }
       }
     } else {
       console.log("Creating brand new league:", newLeague.name);
