@@ -36,7 +36,7 @@ export function LeagueManagement({
   setLeagues,
   archivedLeagues
 }: ExtendedLeagueManagementProps) {
-  const [activeTab, setActiveTab] = useState("active");
+  const [activeTab, setActiveTab] = useState<"active" | "upcoming" | "archived">("active");
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
   const [selectedLeagueFilter, setSelectedLeagueFilter] = useState<number | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -50,6 +50,8 @@ export function LeagueManagement({
   const [selectedLeagueToEdit, setSelectedLeagueToEdit] = useState<League | null>(null);
   const [isEditSessionDialogOpen, setIsEditSessionDialogOpen] = useState(false);
   const [selectedSessionToEdit, setSelectedSessionToEdit] = useState<LeagueSession | null>(null);
+  const [isDeleteEntireLeagueDialogOpen, setIsDeleteEntireLeagueDialogOpen] = useState(false);
+  const [isDebugMode, setIsDebugMode] = useState(false);
 
   const handleCreateLeague = (newLeague: League) => {
     console.log("handleCreateLeague called with:", newLeague);
@@ -156,22 +158,19 @@ export function LeagueManagement({
       });
     }
     
-    // Set the active tab to the appropriate category based on the league's sessions
-    if (newLeague.sessions.length > 0) {
-      const session = newLeague.sessions[0];
-      if (!session.schedule || session.schedule.length === 0) return;
-      
-      const firstDate = new Date(session.schedule[0].date);
-      const lastDate = new Date(session.schedule[session.schedule.length - 1].date);
-      const now = new Date();
-      
-      if (firstDate > now) {
-        setActiveTab("upcoming");
-      } else if (lastDate < now) {
+    // Set the appropriate tab based on the league's category
+    const category = categorizeLeague(newLeague);
+    console.log(`Setting tab for league ${newLeague.name} to ${category}`);
+    switch (category) {
+      case 'archived':
         setActiveTab("archived");
-      } else {
+        break;
+      case 'upcoming':
+        setActiveTab("upcoming");
+        break;
+      case 'active':
         setActiveTab("active");
-      }
+        break;
     }
   };
 
@@ -186,7 +185,7 @@ export function LeagueManagement({
       console.log(`Setting tab for league ${parentLeague.name} to ${category}`);
       switch (category) {
         case 'archived':
-          setActiveTab('archives');
+          setActiveTab('archived');
           break;
         case 'upcoming':
           setActiveTab('upcoming');
@@ -473,6 +472,68 @@ export function LeagueManagement({
     return league ? league.sessions : [];
   };
 
+  // Debug function to clear all leagues
+  const clearAllLeagues = () => {
+    try {
+      // Clear leagues from localStorage
+      localStorage.setItem("leagues", "[]");
+      
+      // Reset state
+      setLeagues([]);
+      setSelectedSession(null);
+      setSelectedTeam(null);
+      
+      // Close any open dialogs
+      setIsDeleteLeagueDialogOpen(false);
+      setIsDeleteEntireLeagueDialogOpen(false);
+      setIsEditLeagueDialogOpen(false);
+      
+      // Force a refresh
+      window.dispatchEvent(new Event('leagueUpdate'));
+      
+      toast({
+        title: "Success",
+        description: "All leagues have been cleared.",
+      });
+    } catch (error) {
+      console.error("Error clearing leagues:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to clear leagues. Please try again.",
+      });
+    }
+  };
+
+  // Function to categorize a league based on its sessions
+  const categorizeLeague = (league: League): 'active' | 'upcoming' | 'archived' => {
+    if (!league.sessions || league.sessions.length === 0) return 'active';
+    
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    // Check all sessions to determine the category
+    const hasUpcoming = league.sessions.some(session => {
+      if (!session.schedule || session.schedule.length === 0) return false;
+      const firstDate = new Date(session.schedule[0].date);
+      firstDate.setHours(0, 0, 0, 0);
+      return firstDate > now;
+    });
+    
+    const hasActive = league.sessions.some(session => {
+      if (!session.schedule || session.schedule.length === 0) return false;
+      const firstDate = new Date(session.schedule[0].date);
+      const lastDate = new Date(session.schedule[session.schedule.length - 1].date);
+      firstDate.setHours(0, 0, 0, 0);
+      lastDate.setHours(0, 0, 0, 0);
+      return firstDate <= now && lastDate >= now;
+    });
+    
+    if (hasActive) return 'active';
+    if (hasUpcoming) return 'upcoming';
+    return 'archived';
+  };
+
   return (
     <Card>
       <CardContent className="pt-6">
@@ -534,7 +595,12 @@ export function LeagueManagement({
               </SelectContent>
             </Select>
           </div>
-          <Tabs defaultValue="active" className="w-full" value={activeTab} onValueChange={setActiveTab}>
+          <Tabs 
+            defaultValue="active" 
+            className="w-full" 
+            value={activeTab} 
+            onValueChange={(value: "active" | "upcoming" | "archived") => setActiveTab(value)}
+          >
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="active">
                 <Trophy className="mr-2 h-4 w-4" />
@@ -544,7 +610,7 @@ export function LeagueManagement({
                 <CalendarClock className="mr-2 h-4 w-4" />
                 Upcoming
               </TabsTrigger>
-              <TabsTrigger value="archives">
+              <TabsTrigger value="archived">
                 <Archive className="mr-2 h-4 w-4" />
                 Archives
               </TabsTrigger>
@@ -607,7 +673,7 @@ export function LeagueManagement({
                 onEditSession={handleEditSession}
               />
             </TabsContent>
-            <TabsContent value="archives">
+            <TabsContent value="archived">
               <LeagueList
                 leagues={selectedLeagueFilter ? archivedLeagues.filter(league => league.id === selectedLeagueFilter) : archivedLeagues}
                 onDeleteLeague={(league) => {
@@ -688,6 +754,65 @@ export function LeagueManagement({
         onOpenChange={setIsEditSessionDialogOpen}
         onSave={handleUpdateSession}
       />
+
+      {/* Debug panel - only visible in debug mode */}
+      <div className="mt-8">
+        <Button 
+          variant="outline" 
+          onClick={() => setIsDebugMode(!isDebugMode)}
+          className="text-xs"
+        >
+          {isDebugMode ? "Hide Debug" : "Show Debug"}
+        </Button>
+        
+        {isDebugMode && (
+          <div className="mt-4 p-4 border rounded-md bg-slate-50">
+            <h3 className="text-sm font-medium mb-2">Debug Tools</h3>
+            <div className="flex space-x-2">
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={clearAllLeagues}
+                className="text-xs"
+              >
+                Clear All Leagues
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => window.location.reload()}
+                className="text-xs"
+              >
+                Reload Page
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.reload();
+                }}
+                className="text-xs"
+              >
+                Clear All Data
+              </Button>
+            </div>
+            <div className="mt-4">
+              <p className="text-xs text-slate-500">Current state:</p>
+              <pre className="text-xs mt-1 p-2 bg-slate-100 rounded overflow-auto max-h-40">
+                {JSON.stringify({
+                  activeTab,
+                  leagues: leagues.length,
+                  upcomingLeagues: upcomingLeagues.length,
+                  archivedLeagues: archivedLeagues.length,
+                  selectedSession: selectedSession ? selectedSession.id : null,
+                  selectedTeam: selectedTeam ? selectedTeam.id : null,
+                }, null, 2)}
+              </pre>
+            </div>
+          </div>
+        )}
+      </div>
     </Card>
   );
 }

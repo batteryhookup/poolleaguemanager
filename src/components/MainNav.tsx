@@ -11,6 +11,11 @@ export function MainNav() {
           Find League
         </Button>
       </Link>
+      <Link to="/reset.html">
+        <Button variant="ghost" className="text-sm font-medium transition-colors hover:text-primary text-red-500">
+          Reset Data
+        </Button>
+      </Link>
     </nav>
   );
 }
