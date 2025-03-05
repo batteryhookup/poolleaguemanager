@@ -17,6 +17,17 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Simple test endpoint to check if leagues routes are working
+router.get('/test', (req, res) => {
+  try {
+    console.log('Leagues test endpoint called');
+    res.json({ message: 'Leagues routes are working properly' });
+  } catch (error) {
+    console.error('Error in leagues test endpoint:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Get a specific league by ID
 router.get('/:id', async (req, res) => {
   try {
@@ -44,13 +55,14 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ message: 'A league with this name already exists' });
     }
     
+    // Set default values for missing fields
     const newLeague = new League({
       name,
-      location,
-      gameType,
-      leagueType,
-      schedule,
-      status,
+      location: location || 'Unknown',
+      gameType: gameType || '8-ball',
+      leagueType: leagueType || 'singles',
+      schedule: schedule || 'Weekly',
+      status: status || 'active',
       sessions: sessions || [],
       createdBy: req.user.id,
       createdAt: new Date()
