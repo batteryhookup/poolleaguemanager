@@ -238,4 +238,10 @@ router.delete('/:id/members/:username', auth, async (req, res) => {
   }
 });
 
+// Simple test endpoint to check if teams routes are working
+router.get('/test', (req, res) => {
+  console.log('Teams test endpoint called');
+  res.json({ message: 'Teams routes are working properly' });
+});
+
 export default router; 
