@@ -52,18 +52,41 @@ export function LeagueManagement({
   const [selectedSessionToEdit, setSelectedSessionToEdit] = useState<LeagueSession | null>(null);
 
   const handleCreateLeague = (newLeague: League) => {
+    console.log("handleCreateLeague called with:", {
+      id: newLeague.id,
+      name: newLeague.name,
+      sessionCount: newLeague.sessions.length,
+      sessions: newLeague.sessions.map(s => ({ id: s.id, name: s.sessionName }))
+    });
+    
     // If this is a new league, create it
     if (!leagues.some(league => league.id === newLeague.id)) {
+      console.log("Creating new league");
       createLeague(newLeague, leagues, setLeagues, true);
     } else {
       // If this is an existing league with a new session, update it
+      console.log("Updating existing league with new session");
       const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+      
+      // Find the existing league to check its current sessions
+      const existingLeague = existingLeagues.find((league: League) => league.id === newLeague.id);
+      if (existingLeague) {
+        console.log("Existing league sessions:", existingLeague.sessions.map(s => ({ id: s.id, name: s.sessionName })));
+        console.log("New league sessions:", newLeague.sessions.map(s => ({ id: s.id, name: s.sessionName })));
+      }
+      
       const updatedLeagues = existingLeagues.map((league: League) =>
         league.id === newLeague.id ? newLeague : league
       );
       localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
       setLeagues(leagues.map(league => league.id === newLeague.id ? newLeague : league));
       window.dispatchEvent(new Event('leagueUpdate'));
+      
+      // Show success toast for session creation
+      toast({
+        title: "Success",
+        description: "League session created successfully!",
+      });
     }
     
     // Set the appropriate tab based on the league's category

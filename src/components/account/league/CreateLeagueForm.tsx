@@ -144,10 +144,12 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
         }),
       };
 
+      // Create a deep copy of the parent league to avoid reference issues
       const updatedLeague = {
         ...parentLeague,
         sessions: [...parentLeague.sessions, newSession]
       };
+      
       onSubmit(updatedLeague);
     }
 
