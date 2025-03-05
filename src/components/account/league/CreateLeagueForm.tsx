@@ -81,10 +81,18 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
     const finalGameType = gameType === "specify" ? customGameType : gameType;
     const now = new Date().toISOString();
 
+    // Generate truly unique IDs with high entropy
+    const generateUniqueId = () => {
+      return Date.now() + Math.floor(Math.random() * 10000000);
+    };
+
     if (selectedLeagueId === "new") {
       // Creating a new league with its first session
+      const leagueId = generateUniqueId();
+      const sessionId = generateUniqueId();
+      
       const newLeague: League = {
-        id: Date.now() + Math.floor(Math.random() * 1000),
+        id: leagueId,
         name: leagueName,
         createdAt: now,
         createdBy: currentUser.username,
@@ -93,7 +101,7 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
       };
 
       const firstSession: LeagueSession = {
-        id: Date.now() + Math.floor(Math.random() * 1000) + 1,
+        id: sessionId,
         parentLeagueId: newLeague.id,
         name: leagueName,
         sessionName: sessionName || "Initial Session",
@@ -132,7 +140,7 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
       }
 
       // Generate a unique ID for the new session with high entropy to avoid collisions
-      const sessionId = Date.now() + Math.floor(Math.random() * 1000000) + 1;
+      const sessionId = generateUniqueId();
       
       const newSession: LeagueSession = {
         id: sessionId,

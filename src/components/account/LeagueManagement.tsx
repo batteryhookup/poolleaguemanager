@@ -67,7 +67,7 @@ export function LeagueManagement({
       // If this is an existing league with a new session, update it
       console.log("Updating existing league with new session");
       
-      // Get the latest data from localStorage
+      // Get the latest data from localStorage to avoid stale data
       const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
       const existingLeague = existingLeagues.find((league: League) => league.id === newLeague.id);
       
@@ -132,7 +132,9 @@ export function LeagueManagement({
     }
   };
 
+  // This function should not be used directly from CreateLeagueForm
   const handleCreateSession = (newSession: LeagueSession) => {
+    console.log("WARNING: handleCreateSession called directly, which may cause duplication");
     createLeagueSession(newSession, leagues, setLeagues);
     // Find the parent league and categorize it
     const parentLeague = leagues.find(l => l.sessions.some(s => s.id === newSession.id));
