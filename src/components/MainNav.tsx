@@ -21,6 +21,11 @@ export function MainNav() {
           Fix Duplicates
         </Button>
       </Link>
+      <Link to="/nuke.html">
+        <Button variant="ghost" className="text-sm font-medium transition-colors hover:text-primary text-red-700 font-bold">
+          NUKE ALL DATA
+        </Button>
+      </Link>
     </nav>
   );
 }

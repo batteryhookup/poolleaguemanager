@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NUKE ALL DATA</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+      background-color: #000;
+      color: #fff;
+    }
+    h1 {
+      color: #ff0000;
+      font-size: 36px;
+      text-transform: uppercase;
+    }
+    .card {
+      background: #1a1a1a;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(255,0,0,0.3);
+      border: 2px solid #ff0000;
+    }
+    button {
+      background: #ff0000;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 4px;
+      font-size: 20px;
+      cursor: pointer;
+      margin-top: 20px;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #cc0000;
+      transform: scale(1.05);
+    }
+    .status {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #ff0000;
+    }
+    pre {
+      background: #0a0a0a;
+      padding: 10px;
+      border-radius: 4px;
+      text-align: left;
+      overflow: auto;
+      max-height: 300px;
+      color: #00ff00;
+      border: 1px solid #333;
+    }
+    .warning {
+      color: #ffcc00;
+      font-size: 18px;
+      margin: 20px 0;
+    }
+    .countdown {
+      font-size: 24px;
+      margin: 20px 0;
+      color: #ff0000;
+    }
+  </style>
+</head>
+<body>
+  <h1>⚠️ NUKE ALL DATA ⚠️</h1>
+  
+  <div class="card">
+    <h2>WARNING: COMPLETE DATA DESTRUCTION</h2>
+    <p class="warning">This will PERMANENTLY DELETE ALL your data including:</p>
+    <ul style="text-align: left; color: #ffcc00;">
+      <li>All leagues</li>
+      <li>All sessions</li>
+      <li>All teams</li>
+      <li>User preferences</li>
+      <li>Login information</li>
+      <li>EVERYTHING</li>
+    </ul>
+    <p class="warning">THIS ACTION CANNOT BE UNDONE!</p>
+    
+    <button onclick="confirmNuke()">NUKE EVERYTHING</button>
+    
+    <div id="countdown" class="countdown" style="display: none;"></div>
+    <div id="status" class="status"></div>
+    <pre id="results"></pre>
+  </div>
+  
+  <script src="nuke-data.js"></script>
+  <script>
+    function confirmNuke() {
+      if (confirm("ARE YOU ABSOLUTELY SURE YOU WANT TO DELETE ALL DATA? THIS CANNOT BE UNDONE!")) {
+        if (confirm("LAST CHANCE TO BACK OUT! Are you REALLY sure?")) {
+          startCountdown();
+        }
+      }
+    }
+    
+    function startCountdown() {
+      const countdownElement = document.getElementById("countdown");
+      countdownElement.style.display = "block";
+      let seconds = 5;
+      
+      countdownElement.textContent = `Nuking in ${seconds} seconds...`;
+      
+      const interval = setInterval(() => {
+        seconds--;
+        countdownElement.textContent = `Nuking in ${seconds} seconds...`;
+        
+        if (seconds <= 0) {
+          clearInterval(interval);
+          executeNuke();
+        }
+      }, 1000);
+    }
+    
+    function executeNuke() {
+      try {
+        const result = nukeAllData();
+        document.getElementById("status").textContent = `NUCLEAR DESTRUCTION COMPLETE!`;
+        document.getElementById("results").textContent = JSON.stringify(result, null, 2);
+        
+        // Redirect after a short delay
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 3000);
+      } catch (error) {
+        document.getElementById("status").textContent = `Error: ${error.message}`;
+        document.getElementById("results").textContent = error.stack;
+      }
+    }
+  </script>
+</body>
+</html>
