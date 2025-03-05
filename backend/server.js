@@ -5,6 +5,7 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
 
 const app = express();
 
@@ -58,9 +59,10 @@ mongoose.connection.on('error', err => {
 
 // Routes
 app.use('/auth', authRoutes);
+app.use('/users', userRoutes);
 
 // Health check route
-app.get('/health', (req, res) => {
+app.use('/health', (req, res) => {
   res.json({ 
     status: 'healthy',
     mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
