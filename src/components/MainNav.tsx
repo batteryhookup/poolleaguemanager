@@ -16,6 +16,11 @@ export function MainNav() {
           Reset Data
         </Button>
       </Link>
+      <Link to="/fix-leagues.html">
+        <Button variant="ghost" className="text-sm font-medium transition-colors hover:text-primary text-orange-500">
+          Fix Duplicates
+        </Button>
+      </Link>
     </nav>
   );
 }

@@ -61,7 +61,9 @@ export function LeagueManagement({
     
     // Check if a league with the same name already exists (case insensitive)
     const existingLeague = existingLeagues.find(
-      league => league.name.toLowerCase() === newLeague.name.toLowerCase()
+      league => 
+        league.name.toLowerCase() === newLeague.name.toLowerCase() &&
+        league.createdBy.toLowerCase() === newLeague.createdBy.toLowerCase()
     );
     
     if (existingLeague) {
@@ -78,6 +80,11 @@ export function LeagueManagement({
       
       if (newSessions.length > 0) {
         console.log(`Adding ${newSessions.length} new sessions to existing league`);
+        
+        // Update the parentLeagueId in all new sessions to match the existing league
+        newSessions.forEach(session => {
+          session.parentLeagueId = existingLeague.id;
+        });
         
         // Update the existing league with new sessions
         const updatedLeague = {
@@ -105,38 +112,9 @@ export function LeagueManagement({
         });
       } else {
         console.log("No new sessions found to add");
-        
-        // Force create a new league with a different ID
-        const forceNewLeague = {
-          ...newLeague,
-          id: Date.now() + Math.floor(Math.random() * 10000),
-          sessions: newLeague.sessions.map(session => ({
-            ...session,
-            id: Date.now() + Math.floor(Math.random() * 10000),
-            parentLeagueId: Date.now() + Math.floor(Math.random() * 10000)
-          }))
-        };
-        
-        // Update the parentLeagueId in all sessions
-        forceNewLeague.sessions.forEach(session => {
-          session.parentLeagueId = forceNewLeague.id;
-        });
-        
-        console.log("Force creating new league with different ID:", forceNewLeague);
-        
-        // Add the new league to localStorage
-        const updatedLeagues = [...existingLeagues, forceNewLeague];
-        localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-        
-        // Update state
-        setLeagues(prevLeagues => [...prevLeagues, forceNewLeague]);
-        
-        // Trigger a refresh
-        window.dispatchEvent(new Event('leagueUpdate'));
-        
         toast({
-          title: "Success",
-          description: `Created new league: ${forceNewLeague.name}`,
+          title: "Info",
+          description: "No new sessions were added to the league.",
         });
       }
     } else {
@@ -161,17 +139,7 @@ export function LeagueManagement({
     // Set the appropriate tab based on the league's category
     const category = categorizeLeague(newLeague);
     console.log(`Setting tab for league ${newLeague.name} to ${category}`);
-    switch (category) {
-      case 'archived':
-        setActiveTab("archived");
-        break;
-      case 'upcoming':
-        setActiveTab("upcoming");
-        break;
-      case 'active':
-        setActiveTab("active");
-        break;
-    }
+    setActiveTab(category);
   };
 
   // This function should not be used directly from CreateLeagueForm
