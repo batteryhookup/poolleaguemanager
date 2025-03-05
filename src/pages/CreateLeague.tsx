@@ -1,4 +1,3 @@
-
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,20 +75,29 @@ const CreateLeague = () => {
       const newLeague: League = {
         id: Date.now(),
         name: leagueName,
-        location,
         password,
         createdAt: new Date().toISOString(),
         createdBy: currentUser.username,
-        type: "singles",
-        gameType: "8-ball",
-        teams: [],
-        schedule: [
-          {
-            date: tomorrow.toISOString().split('T')[0],
-            startTime: "19:00",
-            endTime: "22:00"
-          }
-        ]
+        sessions: [{
+          id: Date.now() + 1,
+          parentLeagueId: Date.now(),
+          sessionName: "Initial Session",
+          name: leagueName,
+          location: location,
+          password: password,
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser.username,
+          teams: [],
+          type: "singles",
+          gameType: "8-ball",
+          schedule: [
+            {
+              date: tomorrow.toISOString().split('T')[0],
+              startTime: "19:00",
+              endTime: "22:00"
+            }
+          ]
+        }]
       };
 
       // First, update localStorage directly without using LeagueOperations
@@ -122,7 +130,7 @@ const CreateLeague = () => {
     setShowExplanationDialog(false);
     
     // Force a reload of the account page to ensure fresh data
-    window.location.href = '/account';
+    navigate('/account');
   };
 
   return (
