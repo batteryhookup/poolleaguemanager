@@ -72,8 +72,9 @@ export default function Login() {
       }
 
       const data = await response.json();
-      // Store the token
+      // Store the token and user data
       localStorage.setItem('token', data.token);
+      localStorage.setItem('currentUser', JSON.stringify(data.user));
       
       toast.success('Successfully logged in!');
       navigate('/account'); // Redirect to account page

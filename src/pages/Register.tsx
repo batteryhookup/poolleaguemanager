@@ -102,18 +102,40 @@ export default function Register() {
         throw new Error(data.message || 'Registration failed');
       }
 
-      toast.success('Registration successful! Please log in.');
+      toast.success('Registration successful!');
       
-      // Clear form data
-      setFormData({
-        username: '',
-        email: '',
-        password: '',
-        confirmPassword: ''
-      });
-      
-      // Navigate immediately instead of using setTimeout
-      navigate('/login');
+      // Automatically log in the user
+      try {
+        const loginResponse = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            username: formData.username,
+            password: formData.password
+          })
+        });
+
+        if (!loginResponse.ok) {
+          // If login fails, redirect to login page
+          navigate('/login');
+          return;
+        }
+
+        const loginData = await loginResponse.json();
+        // Store the token and user data
+        localStorage.setItem('token', loginData.token);
+        localStorage.setItem('currentUser', JSON.stringify(loginData.user));
+        
+        // Navigate to account page
+        navigate('/account');
+      } catch (error) {
+        console.error('Auto-login error:', error);
+        // If auto-login fails, redirect to login page
+        navigate('/login');
+      }
     } catch (error) {
       console.error('Registration error:', error);
       let errorMessage = 'Failed to register';
