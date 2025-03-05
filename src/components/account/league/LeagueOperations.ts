@@ -5,16 +5,35 @@ import { toast } from "@/hooks/use-toast";
 export const createLeague = (newLeague: League, leagues: League[], setLeagues: (leagues: League[]) => void, showToast: boolean = true) => {
   const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
   
-  const updatedLeagues = [...existingLeagues, newLeague];
+  // Check if a league with this ID already exists
+  const existingLeagueIndex = existingLeagues.findIndex((league: League) => league.id === newLeague.id);
+  
+  let updatedLeagues;
+  if (existingLeagueIndex >= 0) {
+    console.log(`League with ID ${newLeague.id} already exists, updating it`);
+    // Update the existing league
+    updatedLeagues = [...existingLeagues];
+    updatedLeagues[existingLeagueIndex] = newLeague;
+  } else {
+    // Add the new league
+    updatedLeagues = [...existingLeagues, newLeague];
+  }
+  
   localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
   
-  setLeagues([...leagues, newLeague]);
+  // Update the state
+  if (existingLeagueIndex >= 0) {
+    setLeagues(leagues.map(league => league.id === newLeague.id ? newLeague : league));
+  } else {
+    setLeagues([...leagues, newLeague]);
+  }
+  
   window.dispatchEvent(new Event('leagueUpdate'));
   
   if (showToast) {
     toast({
       title: "Success",
-      description: "League created successfully!",
+      description: existingLeagueIndex >= 0 ? "League updated successfully!" : "League created successfully!",
     });
   }
   return true;
@@ -33,11 +52,28 @@ export const createLeagueSession = (newSession: LeagueSession, leagues: League[]
     return false;
   }
 
-  // Add the session to the parent league
-  const updatedLeague = {
-    ...parentLeague,
-    sessions: [...parentLeague.sessions, newSession]
-  };
+  // Check if a session with this ID already exists in the parent league
+  const existingSessionIndex = parentLeague.sessions.findIndex(
+    (session: LeagueSession) => session.id === newSession.id
+  );
+
+  let updatedLeague;
+  if (existingSessionIndex >= 0) {
+    console.log(`Session with ID ${newSession.id} already exists in league ${parentLeague.name}, updating it`);
+    // Update the existing session
+    const updatedSessions = [...parentLeague.sessions];
+    updatedSessions[existingSessionIndex] = newSession;
+    updatedLeague = {
+      ...parentLeague,
+      sessions: updatedSessions
+    };
+  } else {
+    // Add the new session
+    updatedLeague = {
+      ...parentLeague,
+      sessions: [...parentLeague.sessions, newSession]
+    };
+  }
 
   // Update the leagues array
   const updatedLeagues = existingLeagues.map((league: League) =>
@@ -50,7 +86,7 @@ export const createLeagueSession = (newSession: LeagueSession, leagues: League[]
 
   toast({
     title: "Success",
-    description: "League session created successfully!",
+    description: existingSessionIndex >= 0 ? "League session updated successfully!" : "League session created successfully!",
   });
   return true;
 };

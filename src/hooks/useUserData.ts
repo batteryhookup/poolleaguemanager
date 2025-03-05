@@ -74,73 +74,43 @@ export const useUserData = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Function to clean up localStorage by removing all duplicate leagues and sessions
-  const cleanupLocalStorage = () => {
-    console.log("Running localStorage cleanup...");
+  const updateLeagueLists = () => {
+    // Get leagues from localStorage
     const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]") as League[];
-    
-    if (allLeagues.length === 0) {
-      console.log("No leagues found in localStorage, nothing to clean up");
-      return;
-    }
-    
-    console.log(`Found ${allLeagues.length} leagues in localStorage`);
-    
-    // Step 1: Deduplicate leagues by ID
-    const leagueMap = new Map<number, League>();
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+
+    console.log("All leagues from localStorage:", allLeagues.map(l => ({ id: l.id, name: l.name })));
+
+    // Ensure no duplicate leagues by using a Map with league ID as key
+    const uniqueLeaguesMap = new Map<number, League>();
     allLeagues.forEach(league => {
-      if (leagueMap.has(league.id)) {
-        console.warn(`Found duplicate league with ID ${league.id}, name: ${league.name}`);
-        // If we already have this league, merge its sessions with the existing one
-        const existingLeague = leagueMap.get(league.id)!;
-        existingLeague.sessions = [...existingLeague.sessions, ...league.sessions];
-        leagueMap.set(league.id, existingLeague);
+      if (uniqueLeaguesMap.has(league.id)) {
+        // If we already have this league, merge its sessions
+        const existingLeague = uniqueLeaguesMap.get(league.id)!;
+        
+        // Merge sessions, avoiding duplicates
+        const sessionMap = new Map<number, LeagueSession>();
+        [...existingLeague.sessions, ...league.sessions].forEach(session => {
+          sessionMap.set(session.id, session);
+        });
+        
+        existingLeague.sessions = Array.from(sessionMap.values());
+        uniqueLeaguesMap.set(league.id, existingLeague);
       } else {
-        leagueMap.set(league.id, { ...league });
+        uniqueLeaguesMap.set(league.id, { ...league });
       }
     });
     
-    // Step 2: For each league, deduplicate its sessions by ID
-    const cleanedLeagues = Array.from(leagueMap.values()).map(league => {
-      const sessionMap = new Map<number, LeagueSession>();
-      league.sessions.forEach(session => {
-        if (sessionMap.has(session.id)) {
-          console.warn(`Found duplicate session with ID ${session.id}, name: ${session.sessionName} in league ${league.name}`);
-        } else {
-          sessionMap.set(session.id, session);
-        }
-      });
-      
-      return {
-        ...league,
-        sessions: Array.from(sessionMap.values())
-      };
-    });
+    const uniqueLeagues = Array.from(uniqueLeaguesMap.values());
     
-    console.log(`Cleanup complete. Reduced from ${allLeagues.length} leagues to ${cleanedLeagues.length} leagues`);
-    console.log(`Session counts before/after:`, {
-      before: allLeagues.reduce((sum, league) => sum + league.sessions.length, 0),
-      after: cleanedLeagues.reduce((sum, league) => sum + league.sessions.length, 0)
-    });
-    
-    // Save the cleaned leagues back to localStorage
-    localStorage.setItem("leagues", JSON.stringify(cleanedLeagues));
-    
-    // Trigger a refresh
-    window.dispatchEvent(new Event('leagueUpdate'));
-    
-    return cleanedLeagues;
-  };
-
-  const updateLeagueLists = () => {
-    // Run the cleanup on every update to ensure we're always working with clean data
-    const cleanedLeagues = cleanupLocalStorage() || JSON.parse(localStorage.getItem("leagues") || "[]") as League[];
-    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
-
-    console.log("All leagues from localStorage after cleanup:", cleanedLeagues.map((l: League) => ({ id: l.id, name: l.name })));
+    // If we found and removed duplicates, update localStorage
+    if (uniqueLeagues.length < allLeagues.length) {
+      console.warn(`Found and merged ${allLeagues.length - uniqueLeagues.length} duplicate leagues`);
+      localStorage.setItem("leagues", JSON.stringify(uniqueLeagues));
+    }
 
     // Filter leagues where the user is either the creator or a member of any team
-    const userLeagues = cleanedLeagues.filter((league: League) => {
+    const userLeagues = uniqueLeagues.filter(league => {
       const isCreator = league.createdBy === currentUser.username;
       const isMember = league.sessions.some(session =>
         session.teams.some(team =>

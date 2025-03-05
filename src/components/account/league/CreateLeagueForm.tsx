@@ -12,12 +12,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LeagueScheduler } from "./LeagueScheduler";
+import { createLeague, createLeagueSession } from "../league/LeagueOperations";
+import { useUserData } from "@/hooks/useUserData";
 
 interface CreateLeagueFormProps {
   onSubmit: (league: League) => void;
+  onClose: () => void;
 }
 
-export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
+export function CreateLeagueForm({ onSubmit, onClose }: CreateLeagueFormProps) {
   const [leagueName, setLeagueName] = useState("");
   const [sessionName, setSessionName] = useState("");
   const [selectedLeagueId, setSelectedLeagueId] = useState<number | "new">("new");
@@ -30,7 +33,9 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
   const [gameType, setGameType] = useState("8-ball");
   const [customGameType, setCustomGameType] = useState("");
   const [schedule, setSchedule] = useState<{ date: string; startTime: string; endTime: string; }[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { leagues, setLeagues } = useUserData();
 
   // Get user's existing leagues
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
@@ -70,176 +75,151 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    if (schedule.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please schedule at least one session for the league.",
-      });
-      return;
-    }
-
-    if (selectedLeagueId === "new" && !leaguePassword) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please enter a league password.",
-      });
-      return;
-    }
-
-    if (!sessionPassword) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please enter a session password.",
-      });
-      return;
-    }
-
-    const finalGameType = gameType === "specify" ? customGameType : gameType;
-    const now = new Date().toISOString();
-
-    // Generate truly unique IDs with high entropy and timestamp
-    const generateUniqueId = () => {
-      const timestamp = Date.now();
-      const random = Math.floor(Math.random() * 1000000000);
-      return timestamp * 1000 + random; // Combine timestamp with random number
-    };
-
-    // Check if an ID already exists in localStorage
-    const isIdUnique = (id: number, type: 'league' | 'session') => {
-      const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]") as League[];
-      
-      if (type === 'league') {
-        return !allLeagues.some(league => league.id === id);
-      } else {
-        return !allLeagues.some(league => 
-          league.sessions.some(session => session.id === id)
-        );
-      }
-    };
-
-    // Generate a guaranteed unique ID
-    const getUniqueId = (type: 'league' | 'session') => {
-      let id = generateUniqueId();
-      while (!isIdUnique(id, type)) {
-        console.warn(`ID collision detected for ${type} with ID ${id}, generating new ID`);
-        id = generateUniqueId();
-      }
-      return id;
-    };
-
-    if (selectedLeagueId === "new") {
-      // Creating a new league with its first session
-      const leagueId = getUniqueId('league');
-      const sessionId = getUniqueId('session');
-      
-      console.log(`Creating new league with ID ${leagueId} and session with ID ${sessionId}`);
-      
-      const newLeague: League = {
-        id: leagueId,
-        name: leagueName,
-        createdAt: now,
-        createdBy: currentUser.username,
-        sessions: [],
-        password: leaguePassword
-      };
-
-      const firstSession: LeagueSession = {
-        id: sessionId,
-        parentLeagueId: newLeague.id,
-        name: leagueName,
-        sessionName: sessionName || "Initial Session",
-        location: leagueLocation,
-        password: sessionPassword,
-        createdAt: now,
-        createdBy: currentUser.username,
-        teams: [],
-        type: leagueType,
-        gameType: finalGameType,
-        schedule,
-        ...(leagueType === "team" && {
-          maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
-          playersPerNight: parseInt(playersPerNight),
-        }),
-      };
-
-      newLeague.sessions = [firstSession];
-      console.log("Creating new league with first session:", {
-        leagueId: newLeague.id,
-        leagueName: newLeague.name,
-        sessionId: firstSession.id,
-        sessionName: firstSession.sessionName
-      });
-      onSubmit(newLeague);
-    } else {
-      // Creating a new session for an existing league
-      const parentLeague = uniqueUserLeagues.find(l => l.id === selectedLeagueId);
-      if (!parentLeague) {
+    try {
+      if (schedule.length === 0) {
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Selected league not found.",
+          description: "Please schedule at least one session for the league.",
         });
+        setIsSubmitting(false);
         return;
       }
 
-      // Generate a unique ID for the new session
-      const sessionId = getUniqueId('session');
+      if (selectedLeagueId === "new" && !leaguePassword) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please enter a league password.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!sessionPassword) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please enter a session password.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
       
-      console.log(`Creating new session with ID ${sessionId} for league ${parentLeague.id}`);
+      const finalGameType = gameType === "specify" ? customGameType : gameType;
+      const uniqueId = Date.now() + Math.floor(Math.random() * 1000);
       
-      const newSession: LeagueSession = {
-        id: sessionId,
-        parentLeagueId: parentLeague.id,
-        name: parentLeague.name,
-        sessionName: sessionName,
-        location: leagueLocation,
-        password: sessionPassword,
-        createdAt: now,
+      if (selectedLeagueId === "new") {
+        // Creating a new league with a new session
+        const newLeague: League = {
+          id: uniqueId,
+          name: leagueName,
+          password: leaguePassword,
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser.username,
+          sessions: [
+            {
+              id: uniqueId + 1, // Ensure session ID is different from league ID
+              name: leagueName,
+              sessionName: sessionName,
+              parentLeagueId: uniqueId,
+              password: sessionPassword,
+              teams: [],
+              schedule: schedule,
+              createdAt: new Date().toISOString(),
+              createdBy: currentUser.username,
+              location: leagueLocation,
+              type: leagueType,
+              gameType: finalGameType,
+              ...(leagueType === "team" && {
+                maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
+                playersPerNight: parseInt(playersPerNight),
+              }),
+            },
+          ],
+        };
+        
+        console.log("Creating new league:", newLeague);
+        createLeague(newLeague, leagues, setLeagues);
+      } else {
+        // Adding a new session to an existing league
+        const selectedLeague = uniqueUserLeagues.find(league => league.id === selectedLeagueId);
+        
+        if (!selectedLeague) {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Selected league not found.",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        
+        const newSession: LeagueSession = {
+          id: uniqueId,
+          name: selectedLeague.name,
+          sessionName: sessionName,
+          parentLeagueId: selectedLeague.id,
+          password: sessionPassword,
+          teams: [],
+          schedule: schedule,
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser.username,
+          location: leagueLocation,
+          type: leagueType,
+          gameType: finalGameType,
+          ...(leagueType === "team" && {
+            maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
+            playersPerNight: parseInt(playersPerNight),
+          }),
+        };
+        
+        console.log("Adding new session to existing league:", {
+          leagueId: selectedLeague.id,
+          leagueName: selectedLeague.name,
+          newSession
+        });
+        
+        createLeagueSession(newSession, leagues, setLeagues);
+      }
+      
+      // Reset form
+      setLeagueName("");
+      setSessionName("");
+      setSelectedLeagueId("new");
+      setLeagueLocation("");
+      setLeaguePassword("");
+      setSessionPassword("");
+      setLeagueType("singles");
+      setMaxPlayersPerTeam("");
+      setPlayersPerNight("");
+      setGameType("8-ball");
+      setCustomGameType("");
+      setSchedule([]);
+      
+      setIsSubmitting(false);
+      onClose();
+      
+      // Call the onSubmit callback to notify the parent component
+      onSubmit({
+        id: uniqueId,
+        name: leagueName,
+        password: leaguePassword,
+        createdAt: new Date().toISOString(),
         createdBy: currentUser.username,
-        teams: [],
-        type: leagueType,
-        gameType: finalGameType,
-        schedule,
-        ...(leagueType === "team" && {
-          maxPlayersPerTeam: parseInt(maxPlayersPerTeam),
-          playersPerNight: parseInt(playersPerNight),
-        }),
-      };
-
-      console.log("Creating new session for existing league:", {
-        leagueId: parentLeague.id,
-        leagueName: parentLeague.name,
-        sessionId: newSession.id,
-        sessionName: newSession.sessionName,
-        existingSessionCount: parentLeague.sessions.length
+        sessions: []
       });
-
-      // Create a deep copy of the parent league to avoid reference issues
-      const updatedLeague = {
-        ...parentLeague,
-        sessions: [...parentLeague.sessions, newSession]
-      };
-      
-      onSubmit(updatedLeague);
+    } catch (error) {
+      console.error("Error creating league:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create league. Please try again.",
+      });
+      setIsSubmitting(false);
     }
-
-    // Reset form
-    setLeagueName("");
-    setSessionName("");
-    setSelectedLeagueId("new");
-    setLeagueLocation("");
-    setLeaguePassword("");
-    setSessionPassword("");
-    setLeagueType("singles");
-    setMaxPlayersPerTeam("");
-    setPlayersPerNight("");
-    setGameType("8-ball");
-    setCustomGameType("");
-    setSchedule([]);
   };
 
   return (
@@ -409,8 +389,8 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
         />
       </div>
 
-      <Button type="submit" className="w-full">
-        {selectedLeagueId === "new" ? "Create League" : "Add Session"}
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? "Creating..." : (selectedLeagueId === "new" ? "Create League" : "Add Session")}
       </Button>
     </form>
   );
