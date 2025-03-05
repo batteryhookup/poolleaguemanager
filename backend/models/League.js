@@ -7,11 +7,13 @@ const sessionSchema = new mongoose.Schema({
   },
   startDate: {
     type: Date,
-    required: true
+    required: true,
+    default: Date.now
   },
   endDate: {
     type: Date,
-    required: true
+    required: true,
+    default: () => new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // 90 days from now
   },
   teams: [{
     teamId: {
@@ -64,21 +66,25 @@ const leagueSchema = new mongoose.Schema({
   },
   location: {
     type: String,
-    required: true
+    required: false,
+    default: "Unknown"
   },
   gameType: {
     type: String,
-    required: true,
+    required: false,
+    default: "8-ball",
     enum: ['8-ball', '9-ball', '10-ball', 'straight', 'one-pocket', 'bank', 'rotation', 'other']
   },
   leagueType: {
     type: String,
-    required: true,
+    required: false,
+    default: "singles",
     enum: ['singles', 'doubles', 'team', 'other']
   },
   schedule: {
     type: String,
-    required: true
+    required: false,
+    default: "Weekly"
   },
   status: {
     type: String,

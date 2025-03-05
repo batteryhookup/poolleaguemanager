@@ -20,8 +20,11 @@ router.get('/', async (req, res) => {
 // Get teams for current user (teams created by user or where user is a member)
 router.get('/user', auth, async (req, res) => {
   try {
+    console.log(`Fetching teams for user ${req.user.id}`);
+    
     const user = await User.findById(req.user.id);
     if (!user) {
+      console.log(`User ${req.user.id} not found`);
       return res.status(404).json({ message: 'User not found' });
     }
     
@@ -33,10 +36,13 @@ router.get('/user', auth, async (req, res) => {
       ]
     });
     
+    console.log(`Found ${teams.length} teams for user ${user.username}`);
+    
+    // Return empty array instead of 404 when no teams are found
     res.json(teams);
   } catch (err) {
     console.error('Error fetching user teams:', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 

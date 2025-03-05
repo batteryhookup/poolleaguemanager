@@ -558,6 +558,9 @@ export const deleteSession = async (
   leagues: League[],
   setLeagues: React.Dispatch<React.SetStateAction<League[]>>
 ): Promise<boolean> => {
+  console.log("Deleting session:", session);
+  console.log("Available leagues:", leagues);
+  
   // Check if the password matches
   if (session.password !== password) {
     toast({
@@ -569,16 +572,29 @@ export const deleteSession = async (
   }
 
   try {
-    // Find the parent league
-    const parentLeague = leagues.find(league => league.id === session.parentLeagueId);
+    // Find the parent league - try multiple methods to find it
+    let parentLeague = leagues.find(league => league.id === session.parentLeagueId);
+    
+    // If not found by ID, try to find by checking if the session is in the league's sessions array
     if (!parentLeague) {
+      parentLeague = leagues.find(league => 
+        league.sessions.some(s => s.id === session.id)
+      );
+    }
+    
+    if (!parentLeague) {
+      console.error("Parent league not found for session:", session);
+      console.log("Available leagues:", leagues.map(l => ({ id: l.id, name: l.name, sessions: l.sessions.map(s => s.id) })));
+      
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Parent league not found.",
+        description: "Parent league not found. Please refresh and try again.",
       });
       return false;
     }
+
+    console.log("Found parent league:", parentLeague.name);
 
     // Get token from localStorage
     const token = localStorage.getItem('token');
@@ -598,7 +614,7 @@ export const deleteSession = async (
         
         if (!backendLeague) {
           console.warn("Could not find backend league, falling back to localStorage");
-          return deleteSessionLocalStorage(session, leagues, setLeagues);
+          return deleteSessionLocalStorage(session, leagues, setLeagues, parentLeague);
         }
         
         // Find the session in the backend league
@@ -608,7 +624,7 @@ export const deleteSession = async (
         
         if (!backendSession) {
           console.warn("Could not find backend session, falling back to localStorage");
-          return deleteSessionLocalStorage(session, leagues, setLeagues);
+          return deleteSessionLocalStorage(session, leagues, setLeagues, parentLeague);
         }
         
         // Try to delete session via API
@@ -646,15 +662,15 @@ export const deleteSession = async (
         } else {
           // Fall back to localStorage if API fails
           console.warn("Failed to delete session via API, falling back to localStorage");
-          return deleteSessionLocalStorage(session, leagues, setLeagues);
+          return deleteSessionLocalStorage(session, leagues, setLeagues, parentLeague);
         }
       } catch (error) {
         console.error("Error deleting session via API:", error);
-        return deleteSessionLocalStorage(session, leagues, setLeagues);
+        return deleteSessionLocalStorage(session, leagues, setLeagues, parentLeague);
       }
     } else {
       // No token, use localStorage
-      return deleteSessionLocalStorage(session, leagues, setLeagues);
+      return deleteSessionLocalStorage(session, leagues, setLeagues, parentLeague);
     }
   } catch (error) {
     console.error("Error in deleteSession:", error);
@@ -671,18 +687,29 @@ export const deleteSession = async (
 const deleteSessionLocalStorage = (
   session: LeagueSession,
   leagues: League[],
-  setLeagues: React.Dispatch<React.SetStateAction<League[]>>
+  setLeagues: React.Dispatch<React.SetStateAction<League[]>>,
+  parentLeague?: League
 ): boolean => {
   try {
-    // Find the parent league
-    const parentLeague = leagues.find(league => league.id === session.parentLeagueId);
+    // Find the parent league if not provided
     if (!parentLeague) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Parent league not found.",
-      });
-      return false;
+      parentLeague = leagues.find(league => league.id === session.parentLeagueId);
+      
+      // If still not found, try to find by checking if the session is in the league's sessions array
+      if (!parentLeague) {
+        parentLeague = leagues.find(league => 
+          league.sessions.some(s => s.id === session.id)
+        );
+      }
+      
+      if (!parentLeague) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Parent league not found.",
+        });
+        return false;
+      }
     }
 
     // Update the league with the session removed

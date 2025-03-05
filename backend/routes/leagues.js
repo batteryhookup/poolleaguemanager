@@ -36,6 +36,8 @@ router.post('/', auth, async (req, res) => {
   try {
     const { name, location, gameType, leagueType, schedule, status, sessions } = req.body;
     
+    console.log('Creating league with data:', JSON.stringify(req.body, null, 2));
+    
     // Check if a league with the same name already exists
     const existingLeague = await League.findOne({ name });
     if (existingLeague) {
@@ -54,11 +56,24 @@ router.post('/', auth, async (req, res) => {
       createdAt: new Date()
     });
     
+    console.log('New league object:', JSON.stringify(newLeague, null, 2));
+    
     const savedLeague = await newLeague.save();
     res.status(201).json(savedLeague);
   } catch (err) {
     console.error('Error creating league:', err);
-    res.status(500).json({ message: 'Server error' });
+    // Log more detailed error information
+    if (err.name === 'ValidationError') {
+      console.error('Validation error details:', err.errors);
+      return res.status(400).json({ 
+        message: 'Validation error', 
+        details: Object.keys(err.errors).reduce((acc, key) => {
+          acc[key] = err.errors[key].message;
+          return acc;
+        }, {})
+      });
+    }
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
@@ -227,14 +242,18 @@ router.put('/:leagueId/sessions/:sessionId', auth, async (req, res) => {
 // Delete a session
 router.delete('/:leagueId/sessions/:sessionId', auth, async (req, res) => {
   try {
+    console.log(`Attempting to delete session ${req.params.sessionId} from league ${req.params.leagueId}`);
+    
     const league = await League.findById(req.params.leagueId);
     
     if (!league) {
+      console.log(`League ${req.params.leagueId} not found`);
       return res.status(404).json({ message: 'League not found' });
     }
     
     // Check if user is the creator of the league
     if (league.createdBy.toString() !== req.user.id) {
+      console.log(`User ${req.user.id} not authorized to delete sessions from league ${req.params.leagueId}`);
       return res.status(403).json({ message: 'Not authorized to delete sessions from this league' });
     }
     
@@ -243,16 +262,28 @@ router.delete('/:leagueId/sessions/:sessionId', auth, async (req, res) => {
     );
     
     if (sessionIndex === -1) {
+      console.log(`Session ${req.params.sessionId} not found in league ${req.params.leagueId}`);
       return res.status(404).json({ message: 'Session not found' });
     }
+    
+    // Get the session before removing it
+    const sessionToDelete = league.sessions[sessionIndex];
+    console.log(`Found session to delete: ${sessionToDelete.name}`);
     
     league.sessions.splice(sessionIndex, 1);
     await league.save();
     
-    res.json({ message: 'Session deleted successfully' });
+    console.log(`Successfully deleted session ${req.params.sessionId} from league ${req.params.leagueId}`);
+    res.json({ 
+      message: 'Session deleted successfully',
+      deletedSession: {
+        _id: sessionToDelete._id,
+        name: sessionToDelete.name
+      }
+    });
   } catch (err) {
     console.error('Error deleting session:', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
