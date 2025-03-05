@@ -51,7 +51,6 @@ export function LeagueManagement({
   const [isEditSessionDialogOpen, setIsEditSessionDialogOpen] = useState(false);
   const [selectedSessionToEdit, setSelectedSessionToEdit] = useState<LeagueSession | null>(null);
   const [isDeleteEntireLeagueDialogOpen, setIsDeleteEntireLeagueDialogOpen] = useState(false);
-  const [isDebugMode, setIsDebugMode] = useState(false);
 
   const handleCreateLeague = (newLeague: League) => {
     console.log("handleCreateLeague called with:", newLeague);
@@ -517,40 +516,7 @@ export function LeagueManagement({
     return league ? league.sessions : [];
   };
 
-  // Debug function to clear all leagues
-  const clearAllLeagues = () => {
-    try {
-      // Clear leagues from localStorage
-      localStorage.setItem("leagues", "[]");
-      
-      // Reset state
-      setLeagues([]);
-      setSelectedSession(null);
-      setSelectedTeam(null);
-      
-      // Close any open dialogs
-      setIsDeleteLeagueDialogOpen(false);
-      setIsDeleteEntireLeagueDialogOpen(false);
-      setIsEditLeagueDialogOpen(false);
-      
-      // Force a refresh
-      window.dispatchEvent(new Event('leagueUpdate'));
-      
-      toast({
-        title: "Success",
-        description: "All leagues have been cleared.",
-      });
-    } catch (error) {
-      console.error("Error clearing leagues:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to clear leagues. Please try again.",
-      });
-    }
-  };
-
-  // Function to categorize a league based on its sessions
+  // Helper function to categorize leagues
   const categorizeLeague = (league: League): 'active' | 'upcoming' | 'archived' => {
     if (!league.sessions || league.sessions.length === 0) return 'active';
     
@@ -799,65 +765,6 @@ export function LeagueManagement({
         onOpenChange={setIsEditSessionDialogOpen}
         onSave={handleUpdateSession}
       />
-
-      {/* Debug panel - only visible in debug mode */}
-      <div className="mt-8">
-        <Button 
-          variant="outline" 
-          onClick={() => setIsDebugMode(!isDebugMode)}
-          className="text-xs"
-        >
-          {isDebugMode ? "Hide Debug" : "Show Debug"}
-        </Button>
-        
-        {isDebugMode && (
-          <div className="mt-4 p-4 border rounded-md bg-slate-50">
-            <h3 className="text-sm font-medium mb-2">Debug Tools</h3>
-            <div className="flex space-x-2">
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={clearAllLeagues}
-                className="text-xs"
-              >
-                Clear All Leagues
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => window.location.reload()}
-                className="text-xs"
-              >
-                Reload Page
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  localStorage.clear();
-                  window.location.reload();
-                }}
-                className="text-xs"
-              >
-                Clear All Data
-              </Button>
-            </div>
-            <div className="mt-4">
-              <p className="text-xs text-slate-500">Current state:</p>
-              <pre className="text-xs mt-1 p-2 bg-slate-100 rounded overflow-auto max-h-40">
-                {JSON.stringify({
-                  activeTab,
-                  leagues: leagues.length,
-                  upcomingLeagues: upcomingLeagues.length,
-                  archivedLeagues: archivedLeagues.length,
-                  selectedSession: selectedSession ? selectedSession.id : null,
-                  selectedTeam: selectedTeam ? selectedTeam.id : null,
-                }, null, 2)}
-              </pre>
-            </div>
-          </div>
-        )}
-      </div>
     </Card>
   );
 }
