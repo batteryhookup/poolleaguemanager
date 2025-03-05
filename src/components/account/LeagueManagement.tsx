@@ -52,99 +52,126 @@ export function LeagueManagement({
   const [selectedSessionToEdit, setSelectedSessionToEdit] = useState<LeagueSession | null>(null);
 
   const handleCreateLeague = (newLeague: League) => {
-    console.log("handleCreateLeague called with:", {
-      id: newLeague.id,
-      name: newLeague.name,
-      sessionCount: newLeague.sessions.length,
-      sessions: newLeague.sessions.map(s => ({ id: s.id, name: s.sessionName }))
-    });
+    console.log("handleCreateLeague called with:", newLeague);
     
-    // Get the latest data from localStorage
+    // Get all leagues from localStorage
     const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]") as League[];
     
-    // Check if this is a new league or an existing one
-    const existingLeague = existingLeagues.find(league => league.id === newLeague.id);
+    // Check if a league with the same name already exists (case insensitive)
+    const existingLeague = existingLeagues.find(
+      league => league.name.toLowerCase() === newLeague.name.toLowerCase()
+    );
     
-    if (!existingLeague) {
-      // This is a new league - add it to localStorage
-      console.log("Creating new league:", newLeague.name);
+    if (existingLeague) {
+      console.log(`Updating existing league: ${existingLeague.name}`);
       
+      // Check if we're adding new sessions
+      const newSessions = newLeague.sessions.filter(newSession => 
+        !existingLeague.sessions.some(existingSession => 
+          existingSession.id === newSession.id || 
+          (existingSession.sessionName === newSession.sessionName && 
+           existingSession.parentLeagueId === newSession.parentLeagueId)
+        )
+      );
+      
+      if (newSessions.length > 0) {
+        console.log(`Adding ${newSessions.length} new sessions to existing league`);
+        
+        // Update the existing league with new sessions
+        const updatedLeague = {
+          ...existingLeague,
+          sessions: [...existingLeague.sessions, ...newSessions]
+        };
+        
+        // Update localStorage
+        const updatedLeagues = existingLeagues.map(league => 
+          league.id === existingLeague.id ? updatedLeague : league
+        );
+        localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+        
+        // Update state
+        setLeagues(prevLeagues => 
+          prevLeagues.map(league => league.id === existingLeague.id ? updatedLeague : league)
+        );
+        
+        // Trigger a refresh
+        window.dispatchEvent(new Event('leagueUpdate'));
+        
+        toast({
+          title: "Success",
+          description: `Added new sessions to ${existingLeague.name}`,
+        });
+      } else {
+        console.log("No new sessions found to add");
+        
+        // Force create a new league with a different ID
+        const forceNewLeague = {
+          ...newLeague,
+          id: Date.now() + Math.floor(Math.random() * 10000),
+          sessions: newLeague.sessions.map(session => ({
+            ...session,
+            id: Date.now() + Math.floor(Math.random() * 10000),
+            parentLeagueId: Date.now() + Math.floor(Math.random() * 10000)
+          }))
+        };
+        
+        // Update the parentLeagueId in all sessions
+        forceNewLeague.sessions.forEach(session => {
+          session.parentLeagueId = forceNewLeague.id;
+        });
+        
+        console.log("Force creating new league with different ID:", forceNewLeague);
+        
+        // Add the new league to localStorage
+        const updatedLeagues = [...existingLeagues, forceNewLeague];
+        localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+        
+        // Update state
+        setLeagues(prevLeagues => [...prevLeagues, forceNewLeague]);
+        
+        // Trigger a refresh
+        window.dispatchEvent(new Event('leagueUpdate'));
+        
+        toast({
+          title: "Success",
+          description: `Created new league: ${forceNewLeague.name}`,
+        });
+      }
+    } else {
+      console.log("Creating brand new league:", newLeague.name);
+      
+      // Add the new league to localStorage
       const updatedLeagues = [...existingLeagues, newLeague];
       localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
       
       // Update state
       setLeagues(prevLeagues => [...prevLeagues, newLeague]);
       
-      // Show success toast
+      // Trigger a refresh
+      window.dispatchEvent(new Event('leagueUpdate'));
+      
       toast({
         title: "Success",
-        description: "League created successfully!",
-      });
-    } else {
-      // This is an existing league - find the new session
-      console.log("Updating existing league:", existingLeague.name);
-      
-      // Find the new session (the one in newLeague that's not in existingLeague)
-      const newSessions = newLeague.sessions.filter(newSession => 
-        !existingLeague.sessions.some(existingSession => 
-          existingSession.id === newSession.id
-        )
-      );
-      
-      if (newSessions.length === 0) {
-        console.warn("No new sessions found to add");
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "No new sessions found to add.",
-        });
-        return;
-      }
-      
-      console.log("Adding new sessions:", newSessions.map(s => s.sessionName));
-      
-      // Update the existing league with the new sessions
-      const updatedLeague = {
-        ...existingLeague,
-        sessions: [...existingLeague.sessions, ...newSessions]
-      };
-      
-      // Update localStorage
-      const updatedLeagues = existingLeagues.map(league => 
-        league.id === updatedLeague.id ? updatedLeague : league
-      );
-      localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-      
-      // Update state
-      setLeagues(prevLeagues => 
-        prevLeagues.map(league => 
-          league.id === updatedLeague.id ? updatedLeague : league
-        )
-      );
-      
-      // Show success toast
-      toast({
-        title: "Success",
-        description: `${newSessions.length} session(s) added successfully!`,
+        description: `Created new league: ${newLeague.name}`,
       });
     }
     
-    // Trigger a refresh of all league lists
-    window.dispatchEvent(new Event('leagueUpdate'));
-    
-    // Set the appropriate tab based on the league's category
-    const category = categorizeLeague(newLeague);
-    console.log(`Setting tab for league ${newLeague.name} to ${category}`);
-    switch (category) {
-      case 'archived':
-        setActiveTab('archives');
-        break;
-      case 'upcoming':
-        setActiveTab('upcoming');
-        break;
-      case 'active':
-        setActiveTab('active');
-        break;
+    // Set the active tab to the appropriate category based on the league's sessions
+    if (newLeague.sessions.length > 0) {
+      const session = newLeague.sessions[0];
+      if (!session.schedule || session.schedule.length === 0) return;
+      
+      const firstDate = new Date(session.schedule[0].date);
+      const lastDate = new Date(session.schedule[session.schedule.length - 1].date);
+      const now = new Date();
+      
+      if (firstDate > now) {
+        setActiveTab("upcoming");
+      } else if (lastDate < now) {
+        setActiveTab("archived");
+      } else {
+        setActiveTab("active");
+      }
     }
   };
 
