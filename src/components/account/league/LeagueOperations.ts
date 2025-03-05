@@ -1,11 +1,20 @@
 import { League, LeagueSession } from "../types/league";
 import { Team } from "../types/team";
-import { toast } from "@/hooks/use-toast";
-import { v4 as uuidv4 } from 'uuid';
+import { toast } from "@/components/ui/use-toast";
 
 const API_URL = import.meta.env.MODE === 'development' 
   ? 'http://localhost:5001'
   : 'https://pool-league-manager-backend.onrender.com';
+
+// Helper function to generate a numeric ID without using uuid
+const generateNumericId = (): number => {
+  // Generate a timestamp-based ID with some randomness
+  return parseInt(
+    Date.now().toString().slice(-10) + 
+    Math.floor(Math.random() * 10000).toString().padStart(4, '0'),
+    10
+  );
+};
 
 export const createLeague = async (
   newLeague: League,
@@ -88,7 +97,7 @@ const createLeagueLocalStorage = (
   // Generate a unique ID if not provided
   const leagueWithId: League = {
     ...newLeague,
-    id: newLeague.id || parseInt(uuidv4().replace(/-/g, '').substring(0, 8), 16),
+    id: newLeague.id || generateNumericId(),
     createdAt: new Date().toISOString(),
   };
 
@@ -211,7 +220,7 @@ const createLeagueSessionLocalStorage = (
   // Generate a unique ID if not provided
   const sessionWithId: LeagueSession = {
     ...newSession,
-    id: newSession.id || parseInt(uuidv4().replace(/-/g, '').substring(0, 8), 16),
+    id: newSession.id || generateNumericId(),
     parentLeagueId: leagueId,
     createdAt: new Date().toISOString(),
   };
@@ -250,13 +259,23 @@ export const deleteLeague = (
   leagues: League[],
   setLeagues: React.Dispatch<React.SetStateAction<League[]>>
 ): boolean => {
+  // Check if any session matches the password
+  if (!selectedLeague.sessions || !selectedLeague.sessions.some(session => session.password === password)) {
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Incorrect league password.",
+    });
+    return false;
+  }
+
   try {
     const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     const updatedLeagues = existingLeagues.filter((league: League) => league.id !== selectedLeague.id);
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
     
     // Update state without triggering navigation
-    setLeagues(prevLeagues => prevLeagues.filter(league => league.id !== selectedLeague.id));
+    setLeagues(leagues.filter(league => league.id !== selectedLeague.id));
     
     // Delay the event dispatch to prevent UI freezing
     setTimeout(() => {
