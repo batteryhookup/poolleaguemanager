@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: pool-league-manager-api
+    env: node
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://pool-league-manager.onrender.com
+
+  - type: web
+    name: pool-league-manager
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html 
