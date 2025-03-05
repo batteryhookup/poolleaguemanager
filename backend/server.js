@@ -6,11 +6,9 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
-// Import new routes - using require for CommonJS modules
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const leagueRoutes = require('./routes/leagues.js');
-const teamRoutes = require('./routes/teams.js');
+// Import new routes as ES modules
+import leagueRoutes from './routes/leagues.js';
+import teamRoutes from './routes/teams.js';
 
 const app = express();
 

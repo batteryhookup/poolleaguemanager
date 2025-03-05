@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const sessionSchema = new mongoose.Schema({
   name: {
@@ -99,4 +99,5 @@ const leagueSchema = new mongoose.Schema({
   updatedAt: Date
 });
 
-module.exports = mongoose.model('League', leagueSchema); 
+const League = mongoose.model('League', leagueSchema);
+export default League; 

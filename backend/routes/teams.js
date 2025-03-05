@@ -1,9 +1,10 @@
-const express = require('express');
+import express from 'express';
+import mongoose from 'mongoose';
+import auth from '../middleware/auth.js';
+import Team from '../models/Team.js';
+import User from '../models/User.js';
+
 const router = express.Router();
-const mongoose = require('mongoose');
-const auth = require('../middleware/auth');
-const Team = require('../models/Team');
-const User = require('../models/User');
 
 // Get all teams
 router.get('/', async (req, res) => {
@@ -231,4 +232,4 @@ router.delete('/:id/members/:username', auth, async (req, res) => {
   }
 });
 
-module.exports = router; 
+export default router; 

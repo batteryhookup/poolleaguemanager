@@ -1,9 +1,10 @@
-const express = require('express');
+import express from 'express';
+import mongoose from 'mongoose';
+import auth from '../middleware/auth.js';
+import League from '../models/League.js';
+import User from '../models/User.js';
+
 const router = express.Router();
-const mongoose = require('mongoose');
-const auth = require('../middleware/auth');
-const League = require('../models/League');
-const User = require('../models/User');
 
 // Get all leagues
 router.get('/', async (req, res) => {
@@ -255,4 +256,4 @@ router.delete('/:leagueId/sessions/:sessionId', auth, async (req, res) => {
   }
 });
 
-module.exports = router; 
+export default router; 
