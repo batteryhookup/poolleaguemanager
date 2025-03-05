@@ -57,28 +57,29 @@ export default function Login() {
 
     setIsLoading(true);
     try {
-      // Create an AbortController with a timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      console.log('Attempting to login with:', formData.username);
       
+      // Remove the AbortController to prevent AbortError
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(formData),
-        signal: controller.signal
+        body: JSON.stringify(formData)
       });
       
-      clearTimeout(timeoutId); // Clear the timeout if the request completes
+      console.log('Login response status:', response.status);
 
       if (!response.ok) {
         const data = await response.json();
+        console.log('Login error response:', data);
         throw new Error(data.message || 'Invalid username or password');
       }
 
       const data = await response.json();
+      console.log('Login successful, received data:', data);
+      
       // Store the token and user data
       localStorage.setItem('token', data.token);
       localStorage.setItem('currentUser', JSON.stringify(data.user));
@@ -88,22 +89,7 @@ export default function Login() {
     } catch (error) {
       console.error('Login error:', error);
       
-      // If the error is due to network issues or timeout, provide offline mode option
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        toast.error('Login request timed out. Using offline mode.');
-        // Set up offline mode with basic user data
-        const offlineUser = {
-          username: formData.username,
-          email: '',
-          id: Date.now(),
-          createdAt: new Date().toISOString()
-        };
-        localStorage.setItem('currentUser', JSON.stringify(offlineUser));
-        navigate('/account');
-        return;
-      }
-      
-      // If it's a network error, also provide offline mode
+      // If it's a network error, provide offline mode
       if (error instanceof TypeError && error.message.includes('network')) {
         toast.error('Network error. Using offline mode.');
         // Set up offline mode with basic user data
