@@ -26,6 +26,11 @@ export function MainNav() {
           NUKE ALL DATA
         </Button>
       </Link>
+      <Link to="/admin.html">
+        <Button variant="ghost" className="text-sm font-medium transition-colors hover:text-primary text-purple-500 font-bold">
+          ADMIN
+        </Button>
+      </Link>
     </nav>
   );
 }
