@@ -62,6 +62,22 @@ export function LeagueManagement({
     // If this is a new league, create it
     if (!leagues.some(league => league.id === newLeague.id)) {
       console.log("Creating new league");
+      
+      // Check if a league with this ID already exists in localStorage
+      const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+      const leagueExists = existingLeagues.some((league: League) => league.id === newLeague.id);
+      
+      if (leagueExists) {
+        console.warn("League with this ID already exists in localStorage, generating new ID");
+        // Generate a new ID to avoid duplication
+        newLeague.id = Date.now() + Math.floor(Math.random() * 10000000);
+        // Update the parentLeagueId in all sessions
+        newLeague.sessions = newLeague.sessions.map(session => ({
+          ...session,
+          parentLeagueId: newLeague.id
+        }));
+      }
+      
       createLeague(newLeague, leagues, setLeagues, true);
     } else {
       // If this is an existing league with a new session, update it
@@ -82,6 +98,17 @@ export function LeagueManagement({
         
         if (newSession) {
           console.log("Found new session:", { id: newSession.id, name: newSession.sessionName });
+          
+          // Check if a session with this ID already exists in any league
+          const sessionExists = existingLeagues.some((league: League) => 
+            league.sessions.some(session => session.id === newSession.id)
+          );
+          
+          if (sessionExists) {
+            console.warn("Session with this ID already exists, generating new ID");
+            // Generate a new ID to avoid duplication
+            newSession.id = Date.now() + Math.floor(Math.random() * 10000000);
+          }
           
           // Update the existing league with just the new session
           const updatedLeague = {

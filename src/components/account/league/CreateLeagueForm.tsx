@@ -35,18 +35,38 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
   // Get user's existing leagues
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
   // Get all leagues (active, upcoming, and archived)
-  const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-  const userLeagues = allLeagues.filter((league: League) => league.createdBy === currentUser.username);
+  const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]") as League[];
+  
+  // Debug: Log all leagues in localStorage
+  console.log("All leagues in localStorage:", allLeagues.map(l => ({ id: l.id, name: l.name, createdBy: l.createdBy })));
+  
+  // Filter to only show leagues created by the current user
+  const userLeagues = allLeagues.filter((league: League) => {
+    const isCreator = league.createdBy === currentUser.username;
+    console.log(`League ${league.name} (${league.id}) - Created by: ${league.createdBy}, Current user: ${currentUser.username}, Is creator: ${isCreator}`);
+    return isCreator;
+  });
+  
+  // Debug: Log user's leagues after filtering
+  console.log("User leagues after filtering:", userLeagues.map(l => ({ id: l.id, name: l.name })));
+  
+  // Ensure no duplicate leagues in the dropdown by using a Map with league ID as key
+  const uniqueUserLeagues = Array.from(
+    new Map(userLeagues.map(league => [league.id, league])).values()
+  );
+  
+  // Debug: Log unique user leagues
+  console.log("Unique user leagues for dropdown:", uniqueUserLeagues.map(l => ({ id: l.id, name: l.name })));
 
   // Reset form when switching between new and existing league
   useEffect(() => {
     if (selectedLeagueId !== "new") {
-      const selectedLeague = userLeagues.find(league => league.id === selectedLeagueId);
+      const selectedLeague = uniqueUserLeagues.find(league => league.id === selectedLeagueId);
       if (selectedLeague) {
         setLeagueName(selectedLeague.name);
       }
     }
-  }, [selectedLeagueId, userLeagues]);
+  }, [selectedLeagueId, uniqueUserLeagues]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,7 +149,7 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
       onSubmit(newLeague);
     } else {
       // Creating a new session for an existing league
-      const parentLeague = allLeagues.find(l => l.id === selectedLeagueId);
+      const parentLeague = uniqueUserLeagues.find(l => l.id === selectedLeagueId);
       if (!parentLeague) {
         toast({
           variant: "destructive",
@@ -195,7 +215,7 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {userLeagues.length > 0 && (
+      {uniqueUserLeagues.length > 0 && (
         <div className="space-y-2">
           <Label>Create For</Label>
           <Select value={selectedLeagueId.toString()} onValueChange={(value) => setSelectedLeagueId(value === "new" ? "new" : parseInt(value))}>
@@ -204,7 +224,7 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="new">Create New League</SelectItem>
-              {userLeagues.map(league => (
+              {uniqueUserLeagues.map(league => (
                 <SelectItem key={league.id} value={league.id.toString()}>
                   {league.name}
                 </SelectItem>

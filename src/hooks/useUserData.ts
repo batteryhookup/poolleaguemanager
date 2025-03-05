@@ -78,8 +78,23 @@ export const useUserData = () => {
     const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
 
+    console.log("All leagues from localStorage:", allLeagues.map((l: League) => ({ id: l.id, name: l.name })));
+
+    // Ensure no duplicate leagues by using a Map with league ID as key
+    const uniqueLeagues = Array.from(
+      new Map(allLeagues.map((league: League) => [league.id, league])).values()
+    );
+
+    console.log("Unique leagues after deduplication:", uniqueLeagues.map((l: League) => ({ id: l.id, name: l.name })));
+
+    // If we found and removed duplicates, update localStorage
+    if (uniqueLeagues.length < allLeagues.length) {
+      console.warn(`Found ${allLeagues.length - uniqueLeagues.length} duplicate leagues, updating localStorage`);
+      localStorage.setItem("leagues", JSON.stringify(uniqueLeagues));
+    }
+
     // Filter leagues where the user is either the creator or a member of any team
-    const userLeagues = allLeagues.filter((league: League) => {
+    const userLeagues = uniqueLeagues.filter((league: League) => {
       const isCreator = league.createdBy === currentUser.username;
       const isMember = league.sessions.some(session =>
         session.teams.some(team =>
@@ -131,9 +146,9 @@ export const useUserData = () => {
     }, { active: [], upcoming: [], archived: [] });
 
     console.log('Categorized leagues:', {
-      active: categorizedLeagues.active.map(l => ({ name: l.name, sessions: l.sessions.map(s => s.sessionName) })),
-      upcoming: categorizedLeagues.upcoming.map(l => ({ name: l.name, sessions: l.sessions.map(s => s.sessionName) })),
-      archived: categorizedLeagues.archived.map(l => ({ name: l.name, sessions: l.sessions.map(s => s.sessionName) }))
+      active: categorizedLeagues.active.map((l: League) => ({ name: l.name, sessions: l.sessions.map(s => s.sessionName) })),
+      upcoming: categorizedLeagues.upcoming.map((l: League) => ({ name: l.name, sessions: l.sessions.map(s => s.sessionName) })),
+      archived: categorizedLeagues.archived.map((l: League) => ({ name: l.name, sessions: l.sessions.map(s => s.sessionName) }))
     });
 
     setLeagues(categorizedLeagues.active);
