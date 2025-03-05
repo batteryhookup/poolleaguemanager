@@ -6,6 +6,7 @@ import { AccountActions } from "@/components/account/AccountActions";
 import { useUserData } from "@/hooks/useUserData";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const MyAccount = () => {
   const navigate = useNavigate();
@@ -20,10 +21,34 @@ const MyAccount = () => {
   } = useUserData();
 
   useEffect(() => {
+    // Check for both token and currentUser
+    const token = localStorage.getItem("token");
     const currentUser = localStorage.getItem("currentUser");
-    if (!currentUser) {
-      navigate("/");
+    
+    console.log("Auth check - Token:", token);
+    console.log("Auth check - CurrentUser:", currentUser);
+    
+    if (!token || !currentUser) {
+      toast.error("Please log in to access your account");
+      navigate("/login");
       return;
+    }
+    
+    // Validate that currentUser is a proper JSON object
+    try {
+      const userObj = JSON.parse(currentUser);
+      if (!userObj || !userObj.username) {
+        toast.error("Invalid user data. Please log in again");
+        localStorage.removeItem("token");
+        localStorage.removeItem("currentUser");
+        navigate("/login");
+      }
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      toast.error("Session data is corrupted. Please log in again");
+      localStorage.removeItem("token");
+      localStorage.removeItem("currentUser");
+      navigate("/login");
     }
   }, [navigate]);
 
