@@ -613,7 +613,17 @@ export function LeagueManagement({
                   <CardTitle>Create New League</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CreateLeagueForm onSubmit={handleCreateLeague} onClose={() => {}} />
+                  <CreateLeagueForm 
+                    onSubmit={handleCreateLeague} 
+                    onClose={() => {
+                      // This will be called after a successful form submission
+                      console.log("League creation form closed");
+                      // Force a refresh of the league lists
+                      setTimeout(() => {
+                        window.dispatchEvent(new Event('leagueUpdate'));
+                      }, 100);
+                    }} 
+                  />
                 </CardContent>
               </Card>
             </TabsContent>

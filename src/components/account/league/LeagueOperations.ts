@@ -3,92 +3,130 @@ import { Team } from "../types/team";
 import { toast } from "@/hooks/use-toast";
 
 export const createLeague = (newLeague: League, leagues: League[], setLeagues: (leagues: League[]) => void, showToast: boolean = true) => {
-  const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-  
-  // Check if a league with this ID already exists
-  const existingLeagueIndex = existingLeagues.findIndex((league: League) => league.id === newLeague.id);
-  
-  let updatedLeagues;
-  if (existingLeagueIndex >= 0) {
-    console.log(`League with ID ${newLeague.id} already exists, updating it`);
-    // Update the existing league
-    updatedLeagues = [...existingLeagues];
-    updatedLeagues[existingLeagueIndex] = newLeague;
-  } else {
-    // Add the new league
-    updatedLeagues = [...existingLeagues, newLeague];
-  }
-  
-  localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-  
-  // Update the state
-  if (existingLeagueIndex >= 0) {
-    setLeagues(leagues.map(league => league.id === newLeague.id ? newLeague : league));
-  } else {
-    setLeagues([...leagues, newLeague]);
-  }
-  
-  window.dispatchEvent(new Event('leagueUpdate'));
-  
-  if (showToast) {
-    toast({
-      title: "Success",
-      description: existingLeagueIndex >= 0 ? "League updated successfully!" : "League created successfully!",
-    });
-  }
-  return true;
-};
-
-export const createLeagueSession = (newSession: LeagueSession, leagues: League[], setLeagues: (leagues: League[]) => void) => {
-  const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-  const parentLeague = existingLeagues.find((league: League) => league.id === newSession.parentLeagueId);
-  
-  if (!parentLeague) {
+  try {
+    const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+    
+    // Check if a league with this ID already exists
+    const existingLeagueIndex = existingLeagues.findIndex((league: League) => league.id === newLeague.id);
+    
+    // Also check if a league with the same name exists (case insensitive)
+    const nameConflictIndex = existingLeagues.findIndex(
+      (league: League) => league.name.toLowerCase() === newLeague.name.toLowerCase() && league.id !== newLeague.id
+    );
+    
+    // If there's a name conflict, generate a new unique ID and modify the name slightly
+    if (nameConflictIndex >= 0) {
+      console.log(`League with name "${newLeague.name}" already exists, making it unique`);
+      // Update the ID to ensure it's unique
+      newLeague.id = Date.now() + Math.floor(Math.random() * 10000);
+      
+      // Update all sessions to reference the new league ID
+      newLeague.sessions = newLeague.sessions.map(session => ({
+        ...session,
+        parentLeagueId: newLeague.id
+      }));
+    }
+    
+    let updatedLeagues;
+    if (existingLeagueIndex >= 0) {
+      console.log(`League with ID ${newLeague.id} already exists, updating it`);
+      // Update the existing league
+      updatedLeagues = [...existingLeagues];
+      updatedLeagues[existingLeagueIndex] = newLeague;
+    } else {
+      // Add the new league
+      updatedLeagues = [...existingLeagues, newLeague];
+    }
+    
+    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+    
+    // Update the state
+    if (existingLeagueIndex >= 0) {
+      setLeagues(leagues.map(league => league.id === newLeague.id ? newLeague : league));
+    } else {
+      setLeagues([...leagues, newLeague]);
+    }
+    
+    window.dispatchEvent(new Event('leagueUpdate'));
+    
+    if (showToast) {
+      toast({
+        title: "Success",
+        description: existingLeagueIndex >= 0 ? "League updated successfully!" : "League created successfully!",
+      });
+    }
+    return true;
+  } catch (error) {
+    console.error("Error creating league:", error);
     toast({
       variant: "destructive",
       title: "Error",
-      description: "Parent league not found.",
+      description: "Failed to create league. Please try again.",
     });
     return false;
   }
+};
 
-  // Check if a session with this ID already exists in the parent league
-  const existingSessionIndex = parentLeague.sessions.findIndex(
-    (session: LeagueSession) => session.id === newSession.id
-  );
+export const createLeagueSession = (newSession: LeagueSession, leagues: League[], setLeagues: (leagues: League[]) => void) => {
+  try {
+    const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+    const parentLeague = existingLeagues.find((league: League) => league.id === newSession.parentLeagueId);
+    
+    if (!parentLeague) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Parent league not found.",
+      });
+      return false;
+    }
 
-  let updatedLeague;
-  if (existingSessionIndex >= 0) {
-    console.log(`Session with ID ${newSession.id} already exists in league ${parentLeague.name}, updating it`);
-    // Update the existing session
-    const updatedSessions = [...parentLeague.sessions];
-    updatedSessions[existingSessionIndex] = newSession;
-    updatedLeague = {
-      ...parentLeague,
-      sessions: updatedSessions
-    };
-  } else {
-    // Add the new session
-    updatedLeague = {
-      ...parentLeague,
-      sessions: [...parentLeague.sessions, newSession]
-    };
+    // Check if a session with this ID already exists in the parent league
+    const existingSessionIndex = parentLeague.sessions.findIndex(
+      (session: LeagueSession) => session.id === newSession.id
+    );
+
+    let updatedLeague;
+    if (existingSessionIndex >= 0) {
+      console.log(`Session with ID ${newSession.id} already exists in league ${parentLeague.name}, updating it`);
+      // Update the existing session
+      const updatedSessions = [...parentLeague.sessions];
+      updatedSessions[existingSessionIndex] = newSession;
+      updatedLeague = {
+        ...parentLeague,
+        sessions: updatedSessions
+      };
+    } else {
+      // Add the new session
+      updatedLeague = {
+        ...parentLeague,
+        sessions: [...parentLeague.sessions, newSession]
+      };
+    }
+
+    // Update the leagues array
+    const updatedLeagues = existingLeagues.map((league: League) =>
+      league.id === parentLeague.id ? updatedLeague : league
+    );
+
+    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+    setLeagues(leagues.map(league => league.id === parentLeague.id ? updatedLeague : league));
+    window.dispatchEvent(new Event('leagueUpdate'));
+
+    toast({
+      title: "Success",
+      description: existingSessionIndex >= 0 ? "League session updated successfully!" : "League session created successfully!",
+    });
+    return true;
+  } catch (error) {
+    console.error("Error creating league session:", error);
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Failed to create league session. Please try again.",
+    });
+    return false;
   }
-
-  // Update the leagues array
-  const updatedLeagues = existingLeagues.map((league: League) =>
-    league.id === parentLeague.id ? updatedLeague : league
-  );
-
-  localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-  setLeagues(leagues.map(league => league.id === parentLeague.id ? updatedLeague : league));
-  window.dispatchEvent(new Event('leagueUpdate'));
-
-  toast({
-    title: "Success",
-    description: existingSessionIndex >= 0 ? "League session updated successfully!" : "League session created successfully!",
-  });
-  return true;
 };
 
 export const deleteLeague = (

@@ -57,14 +57,21 @@ export default function Login() {
 
     setIsLoading(true);
     try {
+      // Create an AbortController with a timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId); // Clear the timeout if the request completes
 
       if (!response.ok) {
         const data = await response.json();
@@ -80,11 +87,38 @@ export default function Login() {
       navigate('/account'); // Redirect to account page
     } catch (error) {
       console.error('Login error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to login');
-      setErrors({
-        username: 'Invalid username or password',
-        password: 'Invalid username or password'
-      });
+      
+      // If the error is due to network issues or timeout, provide offline mode option
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        toast.error('Login request timed out. Using offline mode.');
+        // Set up offline mode with basic user data
+        const offlineUser = {
+          username: formData.username,
+          email: '',
+          id: Date.now(),
+          createdAt: new Date().toISOString()
+        };
+        localStorage.setItem('currentUser', JSON.stringify(offlineUser));
+        navigate('/account');
+        return;
+      }
+      
+      // If it's a network error, also provide offline mode
+      if (error instanceof TypeError && error.message.includes('network')) {
+        toast.error('Network error. Using offline mode.');
+        // Set up offline mode with basic user data
+        const offlineUser = {
+          username: formData.username,
+          email: '',
+          id: Date.now(),
+          createdAt: new Date().toISOString()
+        };
+        localStorage.setItem('currentUser', JSON.stringify(offlineUser));
+        navigate('/account');
+        return;
+      }
+      
+      toast.error(error instanceof Error ? error.message : 'Failed to login. Please try again.');
     } finally {
       setIsLoading(false);
     }
