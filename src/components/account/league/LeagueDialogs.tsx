@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Team } from "../types/team";
-import { LeagueSession } from "../types/league";
+import { LeagueSession, League } from "../types/league";
 
 interface LeagueDialogsProps {
   selectedSession: LeagueSession | null;
@@ -62,8 +62,23 @@ export function LeagueDialogs({
   };
 
   const handleDeleteEntireLeague = () => {
+    // Force enable pointer events before calling the delete function
+    document.body.style.pointerEvents = 'auto';
+    document.body.classList.remove('overflow-hidden');
+    document.body.style.paddingRight = '';
+    
+    // Call the delete function
     onDeleteEntireLeague(deleteEntireLeaguePassword);
+    
+    // Reset the password field
     setDeleteEntireLeaguePassword("");
+    
+    // Ensure the dialog is properly closed
+    setTimeout(() => {
+      if (isDeleteLeagueDialogOpen) {
+        setIsDeleteLeagueDialogOpen(false);
+      }
+    }, 100);
   };
 
   return (

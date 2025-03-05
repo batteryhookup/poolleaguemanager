@@ -340,24 +340,49 @@ export function LeagueManagement({
     }
 
     try {
+      // Store the league ID before deletion
+      const leagueIdToDelete = selectedLeagueToDelete.id;
+      
+      // Update localStorage
       const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-      const updatedLeagues = existingLeagues.filter((league: League) => league.id !== selectedLeagueToDelete.id);
+      const updatedLeagues = existingLeagues.filter((league: League) => league.id !== leagueIdToDelete);
       localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-      setLeagues(leagues.filter(league => league.id !== selectedLeagueToDelete.id));
-      
-      window.dispatchEvent(new Event('leagueUpdate'));
-      
-      toast({
-        title: "Success",
-        description: "League and all its sessions deleted successfully!",
-      });
       
       // Clean up state and ensure overlay is removed
-      setIsDeleteLeagueDialogOpen(false);
+      setIsDeleteEntireLeagueDialogOpen(false);
       setSelectedLeagueToDelete(null);
+      
+      // Force enable pointer events
+      document.body.style.pointerEvents = 'auto';
+      
+      // Use a timeout to ensure the UI updates properly
       setTimeout(() => {
-        document.body.style.pointerEvents = 'auto';
-      }, 0);
+        // Update state after dialog is closed
+        setLeagues(leagues.filter(league => league.id !== leagueIdToDelete));
+        
+        // Show success message
+        toast({
+          title: "Success",
+          description: "League and all its sessions deleted successfully!",
+        });
+        
+        // Force a refresh without navigation
+        setTimeout(() => {
+          // Reset any stuck UI elements
+          document.body.classList.remove('overflow-hidden');
+          document.body.style.paddingRight = '';
+          
+          // Dispatch event after state is updated
+          window.dispatchEvent(new Event('leagueUpdate'));
+          
+          // Force a refresh of the component state
+          const currentTab = activeTab;
+          setActiveTab('active');
+          setTimeout(() => {
+            setActiveTab(currentTab);
+          }, 50);
+        }, 100);
+      }, 50);
     } catch (error) {
       console.error("Error deleting league:", error);
       toast({
@@ -365,6 +390,11 @@ export function LeagueManagement({
         title: "Error",
         description: "Failed to delete league. Please try again.",
       });
+      
+      // Ensure UI is not stuck even on error
+      document.body.style.pointerEvents = 'auto';
+      document.body.classList.remove('overflow-hidden');
+      document.body.style.paddingRight = '';
     }
   };
 
