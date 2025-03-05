@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Tools</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+      background-color: #000;
+      color: #fff;
+    }
+    h1 {
+      color: #ff0000;
+      font-size: 36px;
+      text-transform: uppercase;
+    }
+    .card {
+      background: #1a1a1a;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(255,0,0,0.3);
+      border: 2px solid #ff0000;
+    }
+    button {
+      background: #ff0000;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 4px;
+      font-size: 20px;
+      cursor: pointer;
+      margin-top: 20px;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #cc0000;
+      transform: scale(1.05);
+    }
+    .status {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #ff0000;
+    }
+    pre {
+      background: #0a0a0a;
+      padding: 10px;
+      border-radius: 4px;
+      text-align: left;
+      overflow: auto;
+      max-height: 300px;
+      color: #00ff00;
+      border: 1px solid #333;
+    }
+    .warning {
+      color: #ffcc00;
+      font-size: 18px;
+      margin: 20px 0;
+    }
+    .countdown {
+      font-size: 24px;
+      margin: 20px 0;
+      color: #ff0000;
+    }
+    input {
+      background: #333;
+      color: white;
+      border: 1px solid #666;
+      padding: 10px;
+      border-radius: 4px;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    label {
+      display: block;
+      text-align: left;
+      margin-bottom: 5px;
+      color: #ccc;
+    }
+    .form-group {
+      margin-bottom: 15px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <h1>⚠️ ADMIN TOOLS ⚠️</h1>
+  
+  <div class="card">
+    <h2>DELETE USER FROM SERVER</h2>
+    <p class="warning">This will PERMANENTLY DELETE a user account from the server.</p>
+    <p>Use this to delete your account so you can recreate it with the same username.</p>
+    
+    <div class="form-group">
+      <label for="username">Username:</label>
+      <input type="text" id="username" placeholder="Enter username to delete">
+    </div>
+    
+    <div class="form-group">
+      <label for="password">Password:</label>
+      <input type="password" id="password" placeholder="Enter password to confirm">
+    </div>
+    
+    <button onclick="deleteUserAccount()">DELETE USER</button>
+    
+    <div id="delete-status" class="status"></div>
+    <pre id="delete-results"></pre>
+  </div>
+  
+  <div class="card">
+    <h2>CLEAR LOCAL DATA</h2>
+    <p class="warning">This will clear all data from your browser's localStorage.</p>
+    <p>Use this to clear leagues, sessions, and login information.</p>
+    
+    <button onclick="clearAllLocalData()">CLEAR LOCAL DATA</button>
+    
+    <div id="clear-status" class="status"></div>
+    <pre id="clear-results"></pre>
+  </div>
+  
+  <div class="card">
+    <h2>COMPLETE RESET</h2>
+    <p class="warning">This will DELETE your account from the server AND clear all local data.</p>
+    <p>Use this for a complete fresh start.</p>
+    
+    <div class="form-group">
+      <label for="reset-username">Username:</label>
+      <input type="text" id="reset-username" placeholder="Enter username to delete">
+    </div>
+    
+    <div class="form-group">
+      <label for="reset-password">Password:</label>
+      <input type="password" id="reset-password" placeholder="Enter password to confirm">
+    </div>
+    
+    <button onclick="completeReset()">COMPLETE RESET</button>
+    
+    <div id="reset-status" class="status"></div>
+    <pre id="reset-results"></pre>
+  </div>
+  
+  <script src="admin-tools.js"></script>
+  <script>
+    async function deleteUserAccount() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      
+      if (!username || !password) {
+        document.getElementById('delete-status').textContent = 'Please enter both username and password';
+        return;
+      }
+      
+      document.getElementById('delete-status').textContent = 'Deleting user...';
+      
+      try {
+        const result = await deleteUser(username, password);
+        document.getElementById('delete-status').textContent = result.success ? 'User deleted successfully!' : 'Failed to delete user';
+        document.getElementById('delete-results').textContent = JSON.stringify(result, null, 2);
+        
+        if (result.success) {
+          // Clear the form
+          document.getElementById('username').value = '';
+          document.getElementById('password').value = '';
+        }
+      } catch (error) {
+        document.getElementById('delete-status').textContent = `Error: ${error.message}`;
+        document.getElementById('delete-results').textContent = error.stack;
+      }
+    }
+    
+    function clearAllLocalData() {
+      try {
+        const result = clearLocalData();
+        document.getElementById('clear-status').textContent = 'Local data cleared successfully!';
+        document.getElementById('clear-results').textContent = JSON.stringify(result, null, 2);
+      } catch (error) {
+        document.getElementById('clear-status').textContent = `Error: ${error.message}`;
+        document.getElementById('clear-results').textContent = error.stack;
+      }
+    }
+    
+    async function completeReset() {
+      const username = document.getElementById('reset-username').value.trim();
+      const password = document.getElementById('reset-password').value;
+      
+      if (!username || !password) {
+        document.getElementById('reset-status').textContent = 'Please enter both username and password';
+        return;
+      }
+      
+      document.getElementById('reset-status').textContent = 'Performing complete reset...';
+      
+      try {
+        // First delete the user
+        const deleteResult = await deleteUser(username, password);
+        
+        // Then clear local data regardless of whether the delete succeeded
+        const clearResult = clearLocalData();
+        
+        const result = {
+          deleteUser: deleteResult,
+          clearLocalData: clearResult,
+          success: deleteResult.success && clearResult.success
+        };
+        
+        document.getElementById('reset-status').textContent = result.success 
+          ? 'Complete reset successful!' 
+          : 'Reset partially completed. See details below.';
+        document.getElementById('reset-results').textContent = JSON.stringify(result, null, 2);
+        
+        if (result.success) {
+          // Clear the form
+          document.getElementById('reset-username').value = '';
+          document.getElementById('reset-password').value = '';
+          
+          // Redirect after a short delay
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 3000);
+        }
+      } catch (error) {
+        document.getElementById('reset-status').textContent = `Error: ${error.message}`;
+        document.getElementById('reset-results').textContent = error.stack;
+      }
+    }
+  </script>
+</body>
+</html> 
