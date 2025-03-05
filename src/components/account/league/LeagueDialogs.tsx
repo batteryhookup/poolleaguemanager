@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { 
+  SafeDialog as Dialog, 
+  SafeDialogContent as DialogContent, 
+  SafeDialogDescription as DialogDescription, 
+  SafeDialogHeader as DialogHeader, 
+  SafeDialogTitle as DialogTitle 
+} from "@/components/ui/safe-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Team } from "../types/team";
@@ -62,30 +68,14 @@ export function LeagueDialogs({
   };
 
   const handleDeleteEntireLeague = () => {
-    // First, ensure the dialog will close and UI will remain responsive
-    document.body.style.pointerEvents = "";
-    document.body.style.overflow = "";
-    document.body.style.paddingRight = "";
-    document.body.classList.remove("overflow-hidden");
-    
-    // Close the dialog immediately
-    setIsDeleteLeagueDialogOpen(false);
-    
-    // Small delay before calling the delete function to ensure dialog is closed
-    setTimeout(() => {
-      if (selectedLeagueToDelete) {
-        onDeleteEntireLeague(deleteEntireLeaguePassword);
-      }
-      
-      // Reset the password field
-      setDeleteEntireLeaguePassword("");
-    }, 50);
+    onDeleteEntireLeague(deleteEntireLeaguePassword);
+    setDeleteEntireLeaguePassword("");
   };
 
   return (
     <>
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent onCleanup={() => setDeleteLeaguePassword("")}>
           <DialogHeader>
             <DialogTitle>Delete League</DialogTitle>
             <DialogDescription>
@@ -114,7 +104,7 @@ export function LeagueDialogs({
       </Dialog>
 
       <Dialog open={isAddTeamDialogOpen} onOpenChange={setIsAddTeamDialogOpen}>
-        <DialogContent>
+        <DialogContent onCleanup={() => setNewTeamName("")}>
           <DialogHeader>
             <DialogTitle>Add Team</DialogTitle>
             <DialogDescription>
@@ -142,7 +132,7 @@ export function LeagueDialogs({
       </Dialog>
 
       <Dialog open={isDeleteTeamDialogOpen} onOpenChange={setIsDeleteTeamDialogOpen}>
-        <DialogContent>
+        <DialogContent onCleanup={() => setDeleteTeamPassword("")}>
           <DialogHeader>
             <DialogTitle>Delete Team</DialogTitle>
             <DialogDescription>
@@ -171,7 +161,15 @@ export function LeagueDialogs({
       </Dialog>
 
       <Dialog open={isDeleteLeagueDialogOpen} onOpenChange={setIsDeleteLeagueDialogOpen}>
-        <DialogContent>
+        <DialogContent 
+          onCleanup={() => {
+            setDeleteEntireLeaguePassword("");
+            document.body.style.pointerEvents = "";
+            document.body.style.overflow = "";
+            document.body.style.paddingRight = "";
+            document.body.classList.remove("overflow-hidden");
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Delete Entire League</DialogTitle>
             <DialogDescription>

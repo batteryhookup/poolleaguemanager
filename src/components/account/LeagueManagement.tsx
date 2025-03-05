@@ -391,42 +391,36 @@ export function LeagueManagement({
       
       // Store the league ID before deletion
       const leagueIdToDelete = selectedLeagueToDelete.id;
+      const leagueName = selectedLeagueToDelete.name;
       
       // Update localStorage first
       const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
       const updatedLeagues = existingLeagues.filter((league: League) => league.id !== leagueIdToDelete);
       localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-      console.log("Updated localStorage, removed league:", selectedLeagueToDelete.name);
       
-      // Clean up state and ensure overlay is removed
+      // Clean up state immediately
+      setIsDeleteLeagueDialogOpen(false);
       setIsDeleteEntireLeagueDialogOpen(false);
       setSelectedLeagueToDelete(null);
+      
+      // Update state immediately
+      setLeagues(prevLeagues => prevLeagues.filter(league => league.id !== leagueIdToDelete));
+      
+      // Show success message
+      toast({
+        title: "Success",
+        description: `League "${leagueName}" and all its sessions deleted successfully!`,
+      });
       
       // Force a UI refresh
       window.dispatchEvent(new Event('leagueUpdate'));
       
-      // Use a timeout to ensure the UI updates properly
+      // Force a refresh of the component state
+      const currentTab = activeTab;
+      setActiveTab('active');
       setTimeout(() => {
-        // Update state after dialog is closed
-        setLeagues(leagues.filter(league => league.id !== leagueIdToDelete));
-        console.log("Updated state, removed league with ID:", leagueIdToDelete);
-        
-        // Show success message
-        toast({
-          title: "Success",
-          description: "League and all its sessions deleted successfully!",
-        });
-        
-        // Force another UI refresh
-        window.dispatchEvent(new Event('leagueUpdate'));
-        
-        // Force a refresh of the component state
-        const currentTab = activeTab;
-        setActiveTab('active');
-        setTimeout(() => {
-          setActiveTab(currentTab);
-        }, 50);
-      }, 100);
+        setActiveTab(currentTab);
+      }, 50);
     } catch (error) {
       console.error("Error deleting league:", error);
       
