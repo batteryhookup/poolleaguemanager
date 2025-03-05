@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Application Data</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+    }
+    .card {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #e53e3e;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover {
+      background: #c53030;
+    }
+    .status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Reset Application Data</h1>
+  
+  <div class="card">
+    <h2>Warning!</h2>
+    <p>This will clear all your locally stored data including:</p>
+    <ul style="text-align: left;">
+      <li>All leagues</li>
+      <li>All sessions</li>
+      <li>All teams</li>
+      <li>User preferences</li>
+    </ul>
+    <p>This action cannot be undone.</p>
+    
+    <button onclick="clearAllData()">Reset All Data</button>
+    
+    <div id="status" class="status"></div>
+  </div>
+  
+  <script>
+    function clearAllData() {
+      // Clear all localStorage data
+      localStorage.clear();
+      console.log("All localStorage data has been cleared");
+      
+      // Update status
+      document.getElementById("status").textContent = "All data cleared successfully!";
+      
+      // Redirect after a short delay
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 2000);
+    }
+  </script>
+</body>
+</html> 
