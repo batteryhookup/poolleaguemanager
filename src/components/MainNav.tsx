@@ -11,6 +11,11 @@ export function MainNav() {
           Find League
         </Button>
       </Link>
+      <Link to="/nuke.html">
+        <Button variant="ghost" className="text-sm font-bold transition-colors hover:text-red-600 text-red-500">
+          NUKE ALL DATA
+        </Button>
+      </Link>
       {/* Maintenance tools removed from main navigation */}
     </nav>
   );
