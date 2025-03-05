@@ -62,23 +62,24 @@ export function LeagueDialogs({
   };
 
   const handleDeleteEntireLeague = () => {
-    // Force enable pointer events before calling the delete function
-    document.body.style.pointerEvents = 'auto';
-    document.body.classList.remove('overflow-hidden');
-    document.body.style.paddingRight = '';
+    // First, ensure the dialog will close and UI will remain responsive
+    document.body.style.pointerEvents = "";
+    document.body.style.overflow = "";
+    document.body.style.paddingRight = "";
+    document.body.classList.remove("overflow-hidden");
     
-    // Call the delete function
-    onDeleteEntireLeague(deleteEntireLeaguePassword);
+    // Close the dialog immediately
+    setIsDeleteLeagueDialogOpen(false);
     
-    // Reset the password field
-    setDeleteEntireLeaguePassword("");
-    
-    // Ensure the dialog is properly closed
+    // Small delay before calling the delete function to ensure dialog is closed
     setTimeout(() => {
-      if (isDeleteLeagueDialogOpen) {
-        setIsDeleteLeagueDialogOpen(false);
+      if (selectedLeagueToDelete) {
+        onDeleteEntireLeague(deleteEntireLeaguePassword);
       }
-    }, 100);
+      
+      // Reset the password field
+      setDeleteEntireLeaguePassword("");
+    }, 50);
   };
 
   return (

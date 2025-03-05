@@ -146,27 +146,59 @@ export const deleteLeague = (
   }
 
   try {
+    console.log("Starting league deletion process for league:", selectedLeague.name);
+    
+    // CRITICAL: Fix body styles immediately to prevent freezing
+    document.body.style.pointerEvents = "";
+    document.body.style.overflow = "";
+    document.body.style.paddingRight = "";
+    document.body.classList.remove("overflow-hidden");
+    
+    // Remove any dialog-related classes that might be causing issues
+    const dialogBackdrops = document.querySelectorAll('[data-state="open"]');
+    dialogBackdrops.forEach(el => {
+      if (el instanceof HTMLElement) {
+        el.style.display = "none";
+      }
+    });
+    
+    // Get fresh data from localStorage
     const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     const updatedLeagues = existingLeagues.filter((league: League) => league.id !== selectedLeague.id);
+    
+    // Update localStorage first
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+    console.log("Updated localStorage, removed league:", selectedLeague.name);
     
-    // Update state without triggering navigation
-    const filteredLeagues = leagues.filter(league => league.id !== selectedLeague.id);
-    setLeagues(filteredLeagues);
+    // Force a UI refresh
+    window.dispatchEvent(new Event('leagueUpdate'));
     
-    // Delay the event dispatch to prevent UI freezing
+    // Update state with a delay to allow UI to refresh
     setTimeout(() => {
+      // Update state without triggering navigation
+      const filteredLeagues = leagues.filter(league => league.id !== selectedLeague.id);
+      setLeagues(filteredLeagues);
+      console.log("Updated state, removed league:", selectedLeague.name);
+      
+      // Force another UI refresh
       window.dispatchEvent(new Event('leagueUpdate'));
       
       toast({
         title: "Success",
         description: "League deleted successfully!",
       });
-    }, 50);
+    }, 100);
     
     return true;
   } catch (error) {
     console.error("Error deleting league:", error);
+    
+    // Even if there's an error, fix the UI
+    document.body.style.pointerEvents = "";
+    document.body.style.overflow = "";
+    document.body.style.paddingRight = "";
+    document.body.classList.remove("overflow-hidden");
+    
     toast({
       variant: "destructive",
       title: "Error",

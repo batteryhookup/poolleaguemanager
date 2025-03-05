@@ -61,13 +61,21 @@ export function LeagueManagement({
       // Get fresh data from localStorage
       const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]") as League[];
       
-      // Check if this is a brand new league or an update to an existing one
+      // First check if this is a brand new league or an update to an existing one by ID
       const existingLeagueIndex = existingLeagues.findIndex(
         league => league.id === newLeague.id
       );
       
+      // Also check if a league with the same name exists (case insensitive)
+      const nameMatchIndex = existingLeagues.findIndex(
+        league => 
+          league.name.toLowerCase() === newLeague.name.toLowerCase() &&
+          league.createdBy.toLowerCase() === newLeague.createdBy.toLowerCase() &&
+          league.id !== newLeague.id // Don't match the same league
+      );
+      
       if (existingLeagueIndex >= 0) {
-        // This is an update to an existing league
+        // This is an update to an existing league by ID
         console.log(`Updating existing league with ID ${newLeague.id}`);
         
         // Simply replace the existing league with the new one
@@ -83,6 +91,55 @@ export function LeagueManagement({
           title: "Success",
           description: `Updated league: ${newLeague.name}`,
         });
+      } else if (nameMatchIndex >= 0) {
+        // A league with the same name exists, but different ID
+        console.log(`League with name "${newLeague.name}" already exists, merging sessions`);
+        
+        const existingLeague = existingLeagues[nameMatchIndex];
+        
+        // Check for new sessions to add
+        const newSessions = newLeague.sessions.filter(newSession => {
+          // Consider a session new if it has a different ID
+          return !existingLeague.sessions.some(existingSession => 
+            existingSession.id === newSession.id
+          );
+        });
+        
+        if (newSessions.length > 0) {
+          console.log(`Adding ${newSessions.length} new sessions to existing league`);
+          
+          // Update the parentLeagueId in all new sessions to match the existing league
+          const updatedSessions = newSessions.map(session => ({
+            ...session,
+            parentLeagueId: existingLeague.id
+          }));
+          
+          // Create updated league with merged sessions
+          const updatedLeague = {
+            ...existingLeague,
+            sessions: [...existingLeague.sessions, ...updatedSessions]
+          };
+          
+          // Update localStorage
+          existingLeagues[nameMatchIndex] = updatedLeague;
+          localStorage.setItem("leagues", JSON.stringify(existingLeagues));
+          
+          // Update state
+          setLeagues(prevLeagues => 
+            prevLeagues.map(league => league.id === existingLeague.id ? updatedLeague : league)
+          );
+          
+          toast({
+            title: "Success",
+            description: `Added new sessions to ${existingLeague.name}`,
+          });
+        } else {
+          // No new sessions to add, but update the league anyway
+          toast({
+            title: "Success",
+            description: `Updated league: ${existingLeague.name}`,
+          });
+        }
       } else {
         // This is a brand new league
         console.log(`Creating new league: ${newLeague.name}`);
@@ -306,6 +363,20 @@ export function LeagueManagement({
   const handleDeleteEntireLeague = (password: string) => {
     if (!selectedLeagueToDelete) return;
     
+    // CRITICAL: Fix body styles immediately to prevent freezing
+    document.body.style.pointerEvents = "";
+    document.body.style.overflow = "";
+    document.body.style.paddingRight = "";
+    document.body.classList.remove("overflow-hidden");
+    
+    // Remove any dialog-related classes that might be causing issues
+    const dialogBackdrops = document.querySelectorAll('[data-state="open"]');
+    dialogBackdrops.forEach(el => {
+      if (el instanceof HTMLElement) {
+        el.style.display = "none";
+      }
+    });
+    
     if (password !== selectedLeagueToDelete.password) {
       toast({
         variant: "destructive",
@@ -316,25 +387,29 @@ export function LeagueManagement({
     }
 
     try {
+      console.log("Starting entire league deletion process for league:", selectedLeagueToDelete.name);
+      
       // Store the league ID before deletion
       const leagueIdToDelete = selectedLeagueToDelete.id;
       
-      // Update localStorage
+      // Update localStorage first
       const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
       const updatedLeagues = existingLeagues.filter((league: League) => league.id !== leagueIdToDelete);
       localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+      console.log("Updated localStorage, removed league:", selectedLeagueToDelete.name);
       
       // Clean up state and ensure overlay is removed
       setIsDeleteEntireLeagueDialogOpen(false);
       setSelectedLeagueToDelete(null);
       
-      // Force enable pointer events
-      document.body.style.pointerEvents = 'auto';
+      // Force a UI refresh
+      window.dispatchEvent(new Event('leagueUpdate'));
       
       // Use a timeout to ensure the UI updates properly
       setTimeout(() => {
         // Update state after dialog is closed
         setLeagues(leagues.filter(league => league.id !== leagueIdToDelete));
+        console.log("Updated state, removed league with ID:", leagueIdToDelete);
         
         // Show success message
         toast({
@@ -342,35 +417,30 @@ export function LeagueManagement({
           description: "League and all its sessions deleted successfully!",
         });
         
-        // Force a refresh without navigation
+        // Force another UI refresh
+        window.dispatchEvent(new Event('leagueUpdate'));
+        
+        // Force a refresh of the component state
+        const currentTab = activeTab;
+        setActiveTab('active');
         setTimeout(() => {
-          // Reset any stuck UI elements
-          document.body.classList.remove('overflow-hidden');
-          document.body.style.paddingRight = '';
-          
-          // Dispatch event after state is updated
-          window.dispatchEvent(new Event('leagueUpdate'));
-          
-          // Force a refresh of the component state
-          const currentTab = activeTab;
-          setActiveTab('active');
-          setTimeout(() => {
-            setActiveTab(currentTab);
-          }, 50);
-        }, 100);
-      }, 50);
+          setActiveTab(currentTab);
+        }, 50);
+      }, 100);
     } catch (error) {
       console.error("Error deleting league:", error);
+      
+      // Even if there's an error, fix the UI
+      document.body.style.pointerEvents = "";
+      document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
+      document.body.classList.remove("overflow-hidden");
+      
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to delete league. Please try again.",
       });
-      
-      // Ensure UI is not stuck even on error
-      document.body.style.pointerEvents = 'auto';
-      document.body.classList.remove('overflow-hidden');
-      document.body.style.paddingRight = '';
     }
   };
 
