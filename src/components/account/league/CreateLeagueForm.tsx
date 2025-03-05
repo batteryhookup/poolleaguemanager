@@ -112,6 +112,12 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
       };
 
       newLeague.sessions = [firstSession];
+      console.log("Creating new league with first session:", {
+        leagueId: newLeague.id,
+        leagueName: newLeague.name,
+        sessionId: firstSession.id,
+        sessionName: firstSession.sessionName
+      });
       onSubmit(newLeague);
     } else {
       // Creating a new session for an existing league
@@ -125,8 +131,11 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
         return;
       }
 
+      // Generate a unique ID for the new session with high entropy to avoid collisions
+      const sessionId = Date.now() + Math.floor(Math.random() * 1000000) + 1;
+      
       const newSession: LeagueSession = {
-        id: Date.now() + Math.floor(Math.random() * 1000) + 1,
+        id: sessionId,
         parentLeagueId: parentLeague.id,
         name: parentLeague.name,
         sessionName: sessionName,
@@ -143,6 +152,14 @@ export function CreateLeagueForm({ onSubmit }: CreateLeagueFormProps) {
           playersPerNight: parseInt(playersPerNight),
         }),
       };
+
+      console.log("Creating new session for existing league:", {
+        leagueId: parentLeague.id,
+        leagueName: parentLeague.name,
+        sessionId: newSession.id,
+        sessionName: newSession.sessionName,
+        existingSessionCount: parentLeague.sessions.length
+      });
 
       // Create a deep copy of the parent league to avoid reference issues
       const updatedLeague = {

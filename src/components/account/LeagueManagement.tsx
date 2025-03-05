@@ -66,27 +66,54 @@ export function LeagueManagement({
     } else {
       // If this is an existing league with a new session, update it
       console.log("Updating existing league with new session");
-      const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
       
-      // Find the existing league to check its current sessions
+      // Get the latest data from localStorage
+      const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
       const existingLeague = existingLeagues.find((league: League) => league.id === newLeague.id);
+      
       if (existingLeague) {
         console.log("Existing league sessions:", existingLeague.sessions.map(s => ({ id: s.id, name: s.sessionName })));
         console.log("New league sessions:", newLeague.sessions.map(s => ({ id: s.id, name: s.sessionName })));
+        
+        // Find the new session (the one that's in newLeague but not in existingLeague)
+        const newSession = newLeague.sessions.find(newS => 
+          !existingLeague.sessions.some(existingS => existingS.id === newS.id)
+        );
+        
+        if (newSession) {
+          console.log("Found new session:", { id: newSession.id, name: newSession.sessionName });
+          
+          // Update the existing league with just the new session
+          const updatedLeague = {
+            ...existingLeague,
+            sessions: [...existingLeague.sessions, newSession]
+          };
+          
+          // Update localStorage
+          const updatedLeagues = existingLeagues.map((league: League) =>
+            league.id === updatedLeague.id ? updatedLeague : league
+          );
+          localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+          
+          // Update state
+          setLeagues(prevLeagues => 
+            prevLeagues.map(league => league.id === updatedLeague.id ? updatedLeague : league)
+          );
+          
+          // Dispatch event for other components
+          window.dispatchEvent(new Event('leagueUpdate'));
+          
+          // Show success toast
+          toast({
+            title: "Success",
+            description: "League session created successfully!",
+          });
+        } else {
+          console.warn("No new session found when comparing existing and new league");
+        }
+      } else {
+        console.warn("Existing league not found in localStorage");
       }
-      
-      const updatedLeagues = existingLeagues.map((league: League) =>
-        league.id === newLeague.id ? newLeague : league
-      );
-      localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-      setLeagues(leagues.map(league => league.id === newLeague.id ? newLeague : league));
-      window.dispatchEvent(new Event('leagueUpdate'));
-      
-      // Show success toast for session creation
-      toast({
-        title: "Success",
-        description: "League session created successfully!",
-      });
     }
     
     // Set the appropriate tab based on the league's category
