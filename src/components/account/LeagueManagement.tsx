@@ -202,9 +202,15 @@ export function LeagueManagement({
         // Close the dialog
         setIsDeleteLeagueDialogOpen(false);
         
-        // Force a refresh of the league lists
+        // Force a refresh of the league lists without using hash navigation
         setTimeout(() => {
-          window.dispatchEvent(new Event('leagueUpdate'));
+          // Use a more direct approach to refresh the component state
+          const currentTab = activeTab;
+          setActiveTab('active');
+          setTimeout(() => {
+            setActiveTab(currentTab);
+            window.dispatchEvent(new Event('leagueUpdate'));
+          }, 50);
         }, 100);
       }
       return;
@@ -221,15 +227,16 @@ export function LeagueManagement({
     // Close the dialog
     setIsDeleteLeagueDialogOpen(false);
     
-    // Force a refresh of the league lists
+    // Force a refresh of the league lists without using hash navigation
     setTimeout(() => {
-      window.dispatchEvent(new Event('leagueUpdate'));
+      // Use a more direct approach to refresh the component state
+      const currentTab = activeTab;
+      setActiveTab('active');
+      setTimeout(() => {
+        setActiveTab(currentTab);
+        window.dispatchEvent(new Event('leagueUpdate'));
+      }, 50);
     }, 100);
-    
-    toast({
-      title: "Success",
-      description: "Session deleted successfully!",
-    });
   };
 
   const handleAddTeam = (teamName: string) => {

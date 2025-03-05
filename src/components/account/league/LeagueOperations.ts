@@ -149,14 +149,21 @@ export const deleteLeague = (
     const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     const updatedLeagues = existingLeagues.filter((league: League) => league.id !== selectedLeague.id);
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-    setLeagues(leagues.filter(league => league.id !== selectedLeague.id));
     
-    window.dispatchEvent(new Event('leagueUpdate'));
+    // Update state without triggering navigation
+    const filteredLeagues = leagues.filter(league => league.id !== selectedLeague.id);
+    setLeagues(filteredLeagues);
     
-    toast({
-      title: "Success",
-      description: "League deleted successfully!",
-    });
+    // Delay the event dispatch to prevent UI freezing
+    setTimeout(() => {
+      window.dispatchEvent(new Event('leagueUpdate'));
+      
+      toast({
+        title: "Success",
+        description: "League deleted successfully!",
+      });
+    }, 50);
+    
     return true;
   } catch (error) {
     console.error("Error deleting league:", error);
