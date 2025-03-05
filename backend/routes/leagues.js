@@ -48,11 +48,17 @@ router.post('/', auth, async (req, res) => {
     const { name, location, gameType, leagueType, schedule, status, sessions } = req.body;
     
     console.log('Creating league with data:', JSON.stringify(req.body, null, 2));
+    console.log('User from auth middleware:', req.user);
     
     // Check if a league with the same name already exists
     const existingLeague = await League.findOne({ name });
     if (existingLeague) {
       return res.status(400).json({ message: 'A league with this name already exists' });
+    }
+    
+    // Ensure we have a valid user ID from the auth middleware
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'User authentication required' });
     }
     
     // Set default values for missing fields

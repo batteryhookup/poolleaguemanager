@@ -6,6 +6,17 @@ import User from '../models/User.js';
 
 const router = express.Router();
 
+// Simple test endpoint to check if teams routes are working
+router.get('/test', (req, res) => {
+  try {
+    console.log('Teams test endpoint called');
+    res.json({ message: 'Teams routes are working properly' });
+  } catch (error) {
+    console.error('Error in teams test endpoint:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Get all teams
 router.get('/', async (req, res) => {
   try {
@@ -22,11 +33,18 @@ router.get('/user', auth, async (req, res) => {
   try {
     console.log(`Fetching teams for user ${req.user.id}`);
     
+    if (!req.user || !req.user.id) {
+      console.log('User ID not found in request');
+      return res.status(401).json({ message: 'User authentication required' });
+    }
+    
     const user = await User.findById(req.user.id);
     if (!user) {
-      console.log(`User ${req.user.id} not found`);
+      console.log(`User ${req.user.id} not found in database`);
       return res.status(404).json({ message: 'User not found' });
     }
+    
+    console.log(`Found user: ${user.username} (${user._id})`);
     
     // Find teams where user is creator or a member
     const teams = await Team.find({
@@ -236,12 +254,6 @@ router.delete('/:id/members/:username', auth, async (req, res) => {
     console.error('Error removing team member:', err);
     res.status(500).json({ message: 'Server error' });
   }
-});
-
-// Simple test endpoint to check if teams routes are working
-router.get('/test', (req, res) => {
-  console.log('Teams test endpoint called');
-  res.json({ message: 'Teams routes are working properly' });
 });
 
 export default router; 

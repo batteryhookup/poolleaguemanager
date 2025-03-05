@@ -41,7 +41,13 @@ const auth = (req, res, next) => {
       console.log(`Token verified successfully for user ${decoded.userId}`);
       
       // Add user from payload
-      req.user = decoded;
+      req.user = {
+        id: decoded.userId, // Ensure we set id property for compatibility
+        userId: decoded.userId
+      };
+      
+      console.log(`Set req.user:`, req.user);
+      
       next();
     } catch (verifyError) {
       console.error('Token verification failed:', verifyError.message);
