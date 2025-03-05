@@ -6,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
+const API_URL = import.meta.env.MODE === 'development' 
+  ? 'http://localhost:5001'
+  : 'https://pool-league-manager-backend.onrender.com';
+
 export default function Register() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -77,7 +81,7 @@ export default function Register() {
         email: formData.email,
       });
 
-      const response = await fetch('https://pool-league-manager-backend.onrender.com/auth/register', {
+      const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,8 +91,7 @@ export default function Register() {
           username: formData.username,
           email: formData.email,
           password: formData.password
-        }),
-        credentials: 'include'
+        })
       });
 
       console.log('Response status:', response.status);
@@ -100,9 +103,17 @@ export default function Register() {
       }
 
       toast.success('Registration successful! Please log in.');
-      setTimeout(() => {
-        navigate('/login');
-      }, 1500); // Give time for the success message to be seen
+      
+      // Clear form data
+      setFormData({
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+      });
+      
+      // Navigate immediately instead of using setTimeout
+      navigate('/login');
     } catch (error) {
       console.error('Registration error:', error);
       let errorMessage = 'Failed to register';

@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+const API_URL = import.meta.env.MODE === 'development' 
+  ? 'http://localhost:5001'
+  : 'https://pool-league-manager-backend.onrender.com';
+
 export default function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -53,17 +57,18 @@ export default function Login() {
 
     setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      const response = await fetch('https://pool-league-manager-backend.onrender.com/auth/login', {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(formData)
       });
 
       if (!response.ok) {
-        throw new Error('Invalid username or password');
+        const data = await response.json();
+        throw new Error(data.message || 'Invalid username or password');
       }
 
       const data = await response.json();
@@ -73,6 +78,7 @@ export default function Login() {
       toast.success('Successfully logged in!');
       navigate('/account'); // Redirect to account page
     } catch (error) {
+      console.error('Login error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to login');
       setErrors({
         username: 'Invalid username or password',

@@ -30,13 +30,17 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
 // Connect to MongoDB with improved options
 mongoose.connect(process.env.MONGODB_URI, {
   serverSelectionTimeoutMS: 30000, // Timeout after 30 seconds
   socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
   family: 4, // Use IPv4, skip trying IPv6
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
   retryWrites: true,
   w: "majority",
   ssl: true
