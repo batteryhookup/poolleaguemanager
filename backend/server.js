@@ -6,6 +6,11 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
+// Import new routes - using require for CommonJS modules
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const leagueRoutes = require('./routes/leagues.js');
+const teamRoutes = require('./routes/teams.js');
 
 const app = express();
 
@@ -60,6 +65,9 @@ mongoose.connection.on('error', err => {
 // Routes
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
+// Add new routes
+app.use('/leagues', leagueRoutes);
+app.use('/teams', teamRoutes);
 
 // Health check route
 app.use('/health', (req, res) => {

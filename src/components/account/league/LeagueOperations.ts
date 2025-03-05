@@ -1,204 +1,276 @@
 import { League, LeagueSession } from "../types/league";
 import { Team } from "../types/team";
 import { toast } from "@/hooks/use-toast";
+import { v4 as uuidv4 } from 'uuid';
 
-export const createLeague = (newLeague: League, leagues: League[], setLeagues: (leagues: League[]) => void, showToast: boolean = true) => {
+const API_URL = import.meta.env.MODE === 'development' 
+  ? 'http://localhost:5001'
+  : 'https://pool-league-manager-backend.onrender.com';
+
+export const createLeague = async (
+  newLeague: League,
+  leagues: League[],
+  setLeagues: React.Dispatch<React.SetStateAction<League[]>>,
+  onSuccess?: () => void
+): Promise<League | null> => {
   try {
-    const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-    
-    // Check if a league with this ID already exists
-    const existingLeagueIndex = existingLeagues.findIndex((league: League) => league.id === newLeague.id);
-    
-    // Also check if a league with the same name exists (case insensitive)
-    const nameConflictIndex = existingLeagues.findIndex(
-      (league: League) => league.name.toLowerCase() === newLeague.name.toLowerCase() && league.id !== newLeague.id
-    );
-    
-    // If there's a name conflict, generate a new unique ID and modify the name slightly
-    if (nameConflictIndex >= 0) {
-      console.log(`League with name "${newLeague.name}" already exists, making it unique`);
-      // Update the ID to ensure it's unique
-      newLeague.id = Date.now() + Math.floor(Math.random() * 10000);
-      
-      // Update all sessions to reference the new league ID
-      newLeague.sessions = newLeague.sessions.map(session => ({
-        ...session,
-        parentLeagueId: newLeague.id
-      }));
-    }
-    
-    let updatedLeagues;
-    if (existingLeagueIndex >= 0) {
-      console.log(`League with ID ${newLeague.id} already exists, updating it`);
-      // Update the existing league
-      updatedLeagues = [...existingLeagues];
-      updatedLeagues[existingLeagueIndex] = newLeague;
-    } else {
-      // Add the new league
-      updatedLeagues = [...existingLeagues, newLeague];
-    }
-    
-    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-    
-    // Update the state
-    if (existingLeagueIndex >= 0) {
-      setLeagues(leagues.map(league => league.id === newLeague.id ? newLeague : league));
-    } else {
-      setLeagues([...leagues, newLeague]);
-    }
-    
-    window.dispatchEvent(new Event('leagueUpdate'));
-    
-    if (showToast) {
+    // Check if a league with the same name already exists
+    const existingLeague = leagues.find(league => league.name === newLeague.name);
+    if (existingLeague) {
       toast({
-        title: "Success",
-        description: existingLeagueIndex >= 0 ? "League updated successfully!" : "League created successfully!",
+        title: "Error",
+        description: "A league with this name already exists.",
+        variant: "destructive",
       });
+      return null;
     }
-    return true;
+
+    // Get token from localStorage
+    const token = localStorage.getItem('token');
+    
+    if (token) {
+      try {
+        // Try to create league via API
+        const response = await fetch(`${API_URL}/leagues`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(newLeague)
+        });
+        
+        if (response.ok) {
+          const createdLeague = await response.json();
+          
+          // Update local state
+          setLeagues(prevLeagues => [...prevLeagues, createdLeague]);
+          
+          toast({
+            title: "Success",
+            description: "League created successfully!",
+          });
+          
+          if (onSuccess) onSuccess();
+          
+          return createdLeague;
+        } else {
+          // Fall back to localStorage if API fails
+          console.warn("Failed to create league via API, falling back to localStorage");
+          return createLeagueLocalStorage(newLeague, leagues, setLeagues, onSuccess);
+        }
+      } catch (error) {
+        console.error("Error creating league via API:", error);
+        return createLeagueLocalStorage(newLeague, leagues, setLeagues, onSuccess);
+      }
+    } else {
+      // No token, use localStorage
+      return createLeagueLocalStorage(newLeague, leagues, setLeagues, onSuccess);
+    }
   } catch (error) {
-    console.error("Error creating league:", error);
+    console.error("Error in createLeague:", error);
     toast({
-      variant: "destructive",
       title: "Error",
       description: "Failed to create league. Please try again.",
+      variant: "destructive",
     });
-    return false;
+    return null;
   }
 };
 
-export const createLeagueSession = (newSession: LeagueSession, leagues: League[], setLeagues: (leagues: League[]) => void) => {
+// Fallback function that uses localStorage
+const createLeagueLocalStorage = (
+  newLeague: League,
+  leagues: League[],
+  setLeagues: React.Dispatch<React.SetStateAction<League[]>>,
+  onSuccess?: () => void
+): League => {
+  // Generate a unique ID if not provided
+  const leagueWithId: League = {
+    ...newLeague,
+    id: newLeague.id || parseInt(uuidv4().replace(/-/g, '').substring(0, 8), 16),
+    createdAt: new Date().toISOString(),
+  };
+
+  // Update state and localStorage
+  const updatedLeagues = [...leagues, leagueWithId];
+  setLeagues(updatedLeagues);
+  localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
+
+  // Dispatch custom event for other components to listen to
+  window.dispatchEvent(new CustomEvent("leaguesUpdated", { detail: updatedLeagues }));
+
+  toast({
+    title: "Success",
+    description: "League created successfully!",
+  });
+
+  if (onSuccess) onSuccess();
+
+  return leagueWithId;
+};
+
+export const createLeagueSession = async (
+  leagueId: number,
+  newSession: LeagueSession,
+  leagues: League[],
+  setLeagues: React.Dispatch<React.SetStateAction<League[]>>,
+  onSuccess?: () => void
+): Promise<LeagueSession | null> => {
   try {
-    const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-    const parentLeague = existingLeagues.find((league: League) => league.id === newSession.parentLeagueId);
-    
-    if (!parentLeague) {
+    // Find the league
+    const leagueIndex = leagues.findIndex(league => league.id === leagueId);
+    if (leagueIndex === -1) {
       toast({
-        variant: "destructive",
         title: "Error",
-        description: "Parent league not found.",
+        description: "League not found.",
+        variant: "destructive",
       });
-      return false;
+      return null;
     }
 
-    // Check if a session with this ID already exists in the parent league
-    const existingSessionIndex = parentLeague.sessions.findIndex(
-      (session: LeagueSession) => session.id === newSession.id
-    );
+    const league = leagues[leagueIndex];
 
-    let updatedLeague;
-    if (existingSessionIndex >= 0) {
-      console.log(`Session with ID ${newSession.id} already exists in league ${parentLeague.name}, updating it`);
-      // Update the existing session
-      const updatedSessions = [...parentLeague.sessions];
-      updatedSessions[existingSessionIndex] = newSession;
-      updatedLeague = {
-        ...parentLeague,
-        sessions: updatedSessions
-      };
+    // Check if a session with the same name already exists
+    const existingSession = league.sessions?.find(session => session.name === newSession.name);
+    if (existingSession) {
+      toast({
+        title: "Error",
+        description: "A session with this name already exists in this league.",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    // Get token from localStorage
+    const token = localStorage.getItem('token');
+    
+    if (token) {
+      try {
+        // Try to create session via API
+        const response = await fetch(`${API_URL}/leagues/${leagueId}/sessions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(newSession)
+        });
+        
+        if (response.ok) {
+          const createdSession = await response.json();
+          
+          // Update local state
+          const updatedLeagues = [...leagues];
+          if (!updatedLeagues[leagueIndex].sessions) {
+            updatedLeagues[leagueIndex].sessions = [];
+          }
+          updatedLeagues[leagueIndex].sessions.push(createdSession);
+          setLeagues(updatedLeagues);
+          
+          toast({
+            title: "Success",
+            description: "Session created successfully!",
+          });
+          
+          if (onSuccess) onSuccess();
+          
+          return createdSession;
+        } else {
+          // Fall back to localStorage if API fails
+          console.warn("Failed to create session via API, falling back to localStorage");
+          return createLeagueSessionLocalStorage(leagueId, newSession, leagues, setLeagues, onSuccess);
+        }
+      } catch (error) {
+        console.error("Error creating session via API:", error);
+        return createLeagueSessionLocalStorage(leagueId, newSession, leagues, setLeagues, onSuccess);
+      }
     } else {
-      // Add the new session
-      updatedLeague = {
-        ...parentLeague,
-        sessions: [...parentLeague.sessions, newSession]
+      // No token, use localStorage
+      return createLeagueSessionLocalStorage(leagueId, newSession, leagues, setLeagues, onSuccess);
+    }
+  } catch (error) {
+    console.error("Error in createLeagueSession:", error);
+    toast({
+      title: "Error",
+      description: "Failed to create session. Please try again.",
+      variant: "destructive",
+    });
+    return null;
+  }
+};
+
+// Fallback function that uses localStorage
+const createLeagueSessionLocalStorage = (
+  leagueId: number,
+  newSession: LeagueSession,
+  leagues: League[],
+  setLeagues: React.Dispatch<React.SetStateAction<League[]>>,
+  onSuccess?: () => void
+): LeagueSession => {
+  // Generate a unique ID if not provided
+  const sessionWithId: LeagueSession = {
+    ...newSession,
+    id: newSession.id || parseInt(uuidv4().replace(/-/g, '').substring(0, 8), 16),
+    parentLeagueId: leagueId,
+    createdAt: new Date().toISOString(),
+  };
+
+  // Update the league with the new session
+  const updatedLeagues = leagues.map(league => {
+    if (league.id === leagueId) {
+      return {
+        ...league,
+        sessions: [...(league.sessions || []), sessionWithId],
       };
     }
+    return league;
+  });
 
-    // Update the leagues array
-    const updatedLeagues = existingLeagues.map((league: League) =>
-      league.id === parentLeague.id ? updatedLeague : league
-    );
+  // Update state and localStorage
+  setLeagues(updatedLeagues);
+  localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
 
-    localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-    setLeagues(leagues.map(league => league.id === parentLeague.id ? updatedLeague : league));
-    window.dispatchEvent(new Event('leagueUpdate'));
+  // Dispatch custom event for other components to listen to
+  window.dispatchEvent(new CustomEvent("leaguesUpdated", { detail: updatedLeagues }));
 
-    toast({
-      title: "Success",
-      description: existingSessionIndex >= 0 ? "League session updated successfully!" : "League session created successfully!",
-    });
-    return true;
-  } catch (error) {
-    console.error("Error creating league session:", error);
-    toast({
-      variant: "destructive",
-      title: "Error",
-      description: "Failed to create league session. Please try again.",
-    });
-    return false;
-  }
+  toast({
+    title: "Success",
+    description: "Session created successfully!",
+  });
+
+  if (onSuccess) onSuccess();
+
+  return sessionWithId;
 };
 
 export const deleteLeague = (
   selectedLeague: League,
   password: string,
   leagues: League[],
-  setLeagues: (leagues: League[]) => void
+  setLeagues: React.Dispatch<React.SetStateAction<League[]>>
 ): boolean => {
-  // Check if any session matches the password
-  if (!selectedLeague.sessions || !selectedLeague.sessions.some(session => session.password === password)) {
-    toast({
-      variant: "destructive",
-      title: "Error",
-      description: "Incorrect league password.",
-    });
-    return false;
-  }
-
   try {
-    console.log("Starting league deletion process for league:", selectedLeague.name);
-    
-    // CRITICAL: Fix body styles immediately to prevent freezing
-    document.body.style.pointerEvents = "";
-    document.body.style.overflow = "";
-    document.body.style.paddingRight = "";
-    document.body.classList.remove("overflow-hidden");
-    
-    // Remove any dialog-related classes that might be causing issues
-    const dialogBackdrops = document.querySelectorAll('[data-state="open"]');
-    dialogBackdrops.forEach(el => {
-      if (el instanceof HTMLElement) {
-        el.style.display = "none";
-      }
-    });
-    
-    // Get fresh data from localStorage
     const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
     const updatedLeagues = existingLeagues.filter((league: League) => league.id !== selectedLeague.id);
-    
-    // Update localStorage first
     localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-    console.log("Updated localStorage, removed league:", selectedLeague.name);
     
-    // Force a UI refresh
-    window.dispatchEvent(new Event('leagueUpdate'));
+    // Update state without triggering navigation
+    setLeagues(prevLeagues => prevLeagues.filter(league => league.id !== selectedLeague.id));
     
-    // Update state with a delay to allow UI to refresh
+    // Delay the event dispatch to prevent UI freezing
     setTimeout(() => {
-      // Update state without triggering navigation
-      const filteredLeagues = leagues.filter(league => league.id !== selectedLeague.id);
-      setLeagues(filteredLeagues);
-      console.log("Updated state, removed league:", selectedLeague.name);
-      
-      // Force another UI refresh
       window.dispatchEvent(new Event('leagueUpdate'));
       
       toast({
         title: "Success",
         description: "League deleted successfully!",
       });
-    }, 100);
+    }, 50);
     
     return true;
   } catch (error) {
     console.error("Error deleting league:", error);
-    
-    // Even if there's an error, fix the UI
-    document.body.style.pointerEvents = "";
-    document.body.style.overflow = "";
-    document.body.style.paddingRight = "";
-    document.body.classList.remove("overflow-hidden");
-    
     toast({
       variant: "destructive",
       title: "Error",

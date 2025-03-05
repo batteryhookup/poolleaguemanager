@@ -26,6 +26,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const API_URL = import.meta.env.MODE === 'development' 
+  ? 'http://localhost:5001'
+  : 'https://pool-league-manager-backend.onrender.com';
+
 const TIMEZONES = [
   { value: "America/New_York", label: "Eastern Time (ET)" },
   { value: "America/Chicago", label: "Central Time (CT)" },
@@ -42,27 +46,96 @@ const LeagueFinder = () => {
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
   const [userTeams, setUserTeams] = useState<Team[]>([]);
   const [selectedTimezone, setSelectedTimezone] = useState("America/New_York");
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const loadData = () => {
-      const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
-      setLeagues(allLeagues);
-
-      const currentUser = localStorage.getItem("currentUser");
-      if (currentUser) {
-        const username = JSON.parse(currentUser).username;
-        const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
-        const userTeams = allTeams.filter((team: Team) => 
-          team.createdBy === username || team.members.includes(username)
-        );
-        setUserTeams(userTeams);
+    const fetchLeagues = async () => {
+      setIsLoading(true);
+      try {
+        // Try to fetch from the API first
+        const response = await fetch(`${API_URL}/leagues`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setLeagues(data);
+        } else {
+          // Fall back to localStorage if API fails
+          console.warn("Failed to fetch leagues from API, falling back to localStorage");
+          const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+          setLeagues(allLeagues);
+        }
+        
+        // Get user teams
+        const currentUser = localStorage.getItem("currentUser");
+        if (currentUser) {
+          const username = JSON.parse(currentUser).username;
+          const token = localStorage.getItem("token");
+          
+          if (token) {
+            // Try to fetch teams from API
+            try {
+              const teamsResponse = await fetch(`${API_URL}/teams/user`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              });
+              
+              if (teamsResponse.ok) {
+                const teamsData = await teamsResponse.json();
+                setUserTeams(teamsData);
+              } else {
+                // Fall back to localStorage
+                const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+                const userTeams = allTeams.filter((team: Team) => 
+                  team.createdBy === username || team.members.includes(username)
+                );
+                setUserTeams(userTeams);
+              }
+            } catch (error) {
+              console.error("Error fetching teams:", error);
+              // Fall back to localStorage
+              const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+              const userTeams = allTeams.filter((team: Team) => 
+                team.createdBy === username || team.members.includes(username)
+              );
+              setUserTeams(userTeams);
+            }
+          } else {
+            // No token, use localStorage
+            const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+            const userTeams = allTeams.filter((team: Team) => 
+              team.createdBy === username || team.members.includes(username)
+            );
+            setUserTeams(userTeams);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        // Fall back to localStorage
+        const allLeagues = JSON.parse(localStorage.getItem("leagues") || "[]");
+        setLeagues(allLeagues);
+        
+        const currentUser = localStorage.getItem("currentUser");
+        if (currentUser) {
+          const username = JSON.parse(currentUser).username;
+          const allTeams = JSON.parse(localStorage.getItem("teams") || "[]");
+          const userTeams = allTeams.filter((team: Team) => 
+            team.createdBy === username || team.members.includes(username)
+          );
+          setUserTeams(userTeams);
+        }
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    loadData();
-    const intervalId = setInterval(loadData, 1000);
+    fetchLeagues();
+    
+    // Set up a refresh interval
+    const intervalId = setInterval(fetchLeagues, 30000); // Refresh every 30 seconds
+    
     return () => clearInterval(intervalId);
   }, []);
 

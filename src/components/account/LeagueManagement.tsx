@@ -52,118 +52,25 @@ export function LeagueManagement({
   const [selectedSessionToEdit, setSelectedSessionToEdit] = useState<LeagueSession | null>(null);
   const [isDeleteEntireLeagueDialogOpen, setIsDeleteEntireLeagueDialogOpen] = useState(false);
 
-  const handleCreateLeague = (newLeague: League) => {
+  const handleCreateLeague = async (newLeague: League) => {
     console.log("handleCreateLeague called with:", newLeague);
     
     try {
-      // COMPLETELY NEW APPROACH: Directly use the newLeague object
-      // Get fresh data from localStorage
-      const existingLeagues = JSON.parse(localStorage.getItem("leagues") || "[]") as League[];
+      // Use the updated createLeague function that supports API
+      const createdLeague = await createLeague(newLeague, leagues, setLeagues, () => {
+        // Success callback
+        // Force a refresh of the UI
+        window.dispatchEvent(new Event('leagueUpdate'));
+        
+        // Set the appropriate tab based on the league's category
+        const category = categorizeLeague(newLeague);
+        console.log(`Setting tab for league ${newLeague.name} to ${category}`);
+        setActiveTab(category);
+      });
       
-      // First check if this is a brand new league or an update to an existing one by ID
-      const existingLeagueIndex = existingLeagues.findIndex(
-        league => league.id === newLeague.id
-      );
-      
-      // Also check if a league with the same name exists (case insensitive)
-      const nameMatchIndex = existingLeagues.findIndex(
-        league => 
-          league.name.toLowerCase() === newLeague.name.toLowerCase() &&
-          league.createdBy.toLowerCase() === newLeague.createdBy.toLowerCase() &&
-          league.id !== newLeague.id // Don't match the same league
-      );
-      
-      if (existingLeagueIndex >= 0) {
-        // This is an update to an existing league by ID
-        console.log(`Updating existing league with ID ${newLeague.id}`);
-        
-        // Simply replace the existing league with the new one
-        existingLeagues[existingLeagueIndex] = newLeague;
-        localStorage.setItem("leagues", JSON.stringify(existingLeagues));
-        
-        // Update state
-        setLeagues(prevLeagues => 
-          prevLeagues.map(league => league.id === newLeague.id ? newLeague : league)
-        );
-        
-        toast({
-          title: "Success",
-          description: `Updated league: ${newLeague.name}`,
-        });
-      } else if (nameMatchIndex >= 0) {
-        // A league with the same name exists, but different ID
-        console.log(`League with name "${newLeague.name}" already exists, merging sessions`);
-        
-        const existingLeague = existingLeagues[nameMatchIndex];
-        
-        // Check for new sessions to add
-        const newSessions = newLeague.sessions.filter(newSession => {
-          // Consider a session new if it has a different ID
-          return !existingLeague.sessions.some(existingSession => 
-            existingSession.id === newSession.id
-          );
-        });
-        
-        if (newSessions.length > 0) {
-          console.log(`Adding ${newSessions.length} new sessions to existing league`);
-          
-          // Update the parentLeagueId in all new sessions to match the existing league
-          const updatedSessions = newSessions.map(session => ({
-            ...session,
-            parentLeagueId: existingLeague.id
-          }));
-          
-          // Create updated league with merged sessions
-          const updatedLeague = {
-            ...existingLeague,
-            sessions: [...existingLeague.sessions, ...updatedSessions]
-          };
-          
-          // Update localStorage
-          existingLeagues[nameMatchIndex] = updatedLeague;
-          localStorage.setItem("leagues", JSON.stringify(existingLeagues));
-          
-          // Update state
-          setLeagues(prevLeagues => 
-            prevLeagues.map(league => league.id === existingLeague.id ? updatedLeague : league)
-          );
-          
-          toast({
-            title: "Success",
-            description: `Added new sessions to ${existingLeague.name}`,
-          });
-        } else {
-          // No new sessions to add, but update the league anyway
-          toast({
-            title: "Success",
-            description: `Updated league: ${existingLeague.name}`,
-          });
-        }
-      } else {
-        // This is a brand new league
-        console.log(`Creating new league: ${newLeague.name}`);
-        
-        // Add it to localStorage
-        const updatedLeagues = [...existingLeagues, newLeague];
-        localStorage.setItem("leagues", JSON.stringify(updatedLeagues));
-        
-        // Update state
-        setLeagues(prevLeagues => [...prevLeagues, newLeague]);
-        
-        toast({
-          title: "Success",
-          description: `Created new league: ${newLeague.name}`,
-        });
+      if (!createdLeague) {
+        console.error("Failed to create league");
       }
-      
-      // Force a refresh of the UI
-      window.dispatchEvent(new Event('leagueUpdate'));
-      
-      // Set the appropriate tab based on the league's category
-      const category = categorizeLeague(newLeague);
-      console.log(`Setting tab for league ${newLeague.name} to ${category}`);
-      setActiveTab(category);
-      
     } catch (error) {
       console.error("Error in handleCreateLeague:", error);
       toast({
@@ -175,25 +82,38 @@ export function LeagueManagement({
   };
 
   // This function should not be used directly from CreateLeagueForm
-  const handleCreateSession = (newSession: LeagueSession) => {
+  const handleCreateSession = async (newSession: LeagueSession) => {
     console.log("WARNING: handleCreateSession called directly, which may cause duplication");
-    createLeagueSession(newSession, leagues, setLeagues);
-    // Find the parent league and categorize it
-    const parentLeague = leagues.find(l => l.sessions.some(s => s.id === newSession.id));
-    if (parentLeague) {
-      const category = categorizeLeague(parentLeague);
-      console.log(`Setting tab for league ${parentLeague.name} to ${category}`);
-      switch (category) {
-        case 'archived':
-          setActiveTab('archived');
-          break;
-        case 'upcoming':
-          setActiveTab('upcoming');
-          break;
-        case 'active':
-          setActiveTab('active');
-          break;
+    
+    if (!newSession.parentLeagueId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Parent league ID is required to create a session.",
+      });
+      return;
+    }
+    
+    // Use the updated createLeagueSession function that supports API
+    const createdSession = await createLeagueSession(
+      newSession.parentLeagueId, 
+      newSession, 
+      leagues, 
+      setLeagues,
+      () => {
+        // Success callback
+        // Find the parent league and categorize it
+        const parentLeague = leagues.find(l => l.id === newSession.parentLeagueId);
+        if (parentLeague) {
+          const category = categorizeLeague(parentLeague);
+          console.log(`Setting tab for league ${parentLeague.name} to ${category}`);
+          setActiveTab(category);
+        }
       }
+    );
+    
+    if (!createdSession) {
+      console.error("Failed to create session");
     }
   };
 
