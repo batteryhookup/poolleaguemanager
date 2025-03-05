@@ -16,11 +16,8 @@ app.use(express.static(path.join(__dirname, 'dist')));
 app.get('*', (req, res) => {
   console.log(`Received request for: ${req.url}`);
   
-  // Check if the request is for /account
-  if (req.url === '/account') {
-    console.log('Redirecting /account to /#/account');
-    return res.redirect('/#/account');
-  }
+  // No longer redirecting /account to /#/account
+  // Let the client-side router handle all routes
   
   const indexPath = path.join(__dirname, 'dist', 'index.html');
   
